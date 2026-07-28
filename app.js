@@ -40,6 +40,7 @@ const yearInput = document.querySelector("#year-input");
 const monthInput = document.querySelector("#month-input");
 const currentMonth = document.querySelector("#current-month");
 const table = document.querySelector("#schedule-table");
+const mobileSchedule = document.querySelector("#mobile-schedule");
 const staffSelect = document.querySelector("#staff-select");
 const dateInput = document.querySelector("#date-input");
 const queryResult = document.querySelector("#query-result");
@@ -120,6 +121,18 @@ function renderMonth(year, monthIndex) {
       <tr><th class="corner" scope="col">星期</th>${weekdayHeader}</tr>
     </thead>
     <tbody>${rows}</tbody>`;
+
+  renderMobileSchedule(dates);
+}
+
+function renderMobileSchedule(dates) {
+  mobileSchedule.innerHTML = dates.map((date) => {
+    const shifts = staff.map((person) => {
+      const shift = getShift(person.name, date);
+      return `<div class="mobile-shift"><span class="mobile-shift-name">${person.name}</span><span class="mobile-shift-badge ${cellClass(shift)}">${shift}</span></div>`;
+    }).join("");
+    return `<article class="mobile-day-card"><header class="mobile-day-heading ${isWeekend(date) ? "weekend" : ""}"><span class="mobile-day-number">${date.getMonth() + 1} 月 ${date.getDate()} 日</span><span class="mobile-day-weekday">${WEEKDAYS[date.getDay()]}</span></header><div class="mobile-shifts">${shifts}</div></article>`;
+  }).join("");
 }
 
 function isWeekend(date) {
