@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#087d40" />
+    <title>值班表</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="page-shell">
+      <header class="hero">
+        <p class="eyebrow">监测预警中心</p>
+        <h1>值班表</h1>
+      </header>
+
+      <section class="panel month-panel" aria-labelledby="month-title">
+        <div class="panel-heading">
+          <div>
+            <p class="section-kicker">月度排班</p>
+            <h2 id="month-title">值班表</h2>
+          </div>
+          <div class="month-form" aria-label="选择查看月份">
+            <label>
+              <span>年份</span>
+              <input id="year-input" type="number" inputmode="numeric" min="2026" max="9999" aria-label="年份" />
+            </label>
+            <label>
+              <span>月份</span>
+              <input id="month-input" type="number" inputmode="numeric" min="1" max="12" aria-label="月份" />
+            </label>
+            <button id="go-month" class="button button-primary" type="button">查看当月</button>
+          </div>
+        </div>
+
+        <div class="month-navigation" aria-label="月份切换">
+          <button id="previous-month" class="button button-secondary" type="button" aria-label="查看上个月">‹ <span>上个月</span></button>
+          <p id="current-month" aria-live="polite"></p>
+          <button id="next-month" class="button button-secondary" type="button" aria-label="查看下个月"><span>下个月</span> ›</button>
+        </div>
+
+        <div class="legend" aria-label="班次颜色说明">
+          <span><i class="legend-swatch rest"></i>休息</span>
+          <span><i class="legend-swatch night"></i>含晚班</span>
+          <span><i class="legend-swatch day"></i>早／中班</span>
+          <span><i class="legend-swatch weekend"></i>周末</span>
+        </div>
+
+        <div class="table-hint">可左右滑动查看整月排班</div>
+        <div class="table-scroll" tabindex="0" aria-label="月度值班表，可横向滚动">
+          <table id="schedule-table">
+            <caption class="sr-only">全员月度值班表</caption>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel query-panel" aria-labelledby="query-title">
+        <div>
+          <p class="section-kicker">快速查询</p>
+          <h2 id="query-title">查询某天是否值班</h2>
+          <p class="query-description">选择姓名和日期，即可查看当天是否上班及具体班次。</p>
+        </div>
+        <form id="query-form" class="query-form">
+          <label>
+            <span>姓名</span>
+            <select id="staff-select" required aria-label="选择姓名"></select>
+          </label>
+          <label>
+            <span>日期</span>
+            <input id="date-input" type="date" min="2026-07-01" required aria-label="选择日期" />
+          </label>
+          <button class="button button-primary" type="submit">查询值班</button>
+        </form>
+        <div id="query-result" class="query-result is-empty" role="status" aria-live="polite">
+          请选择姓名和日期后查询
+        </div>
+      </section>
+    </main>
+
+    <footer>仅供参考</footer>
+    <script src="app.js"></script>
+  </body>
+</html>
