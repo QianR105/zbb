@@ -142,9 +142,9 @@ function isWeekend(date) {
 function showQueryResult(name, date) {
   const shift = getShift(name, date);
   const rest = shift === "休";
-  const status = rest ? "休息" : "上班";
+  const resultText = rest ? "休息" : shift;
   queryResult.className = `query-result ${rest ? "is-rest" : "is-work"}`;
-  queryResult.innerHTML = `<strong>${name}</strong> · ${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日（${WEEKDAYS[date.getDay()]}）：${status}，班次为 <strong>${shift}</strong>。`;
+  queryResult.innerHTML = `<strong>${name}</strong> · ${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日：<strong>${resultText}</strong>`;
 }
 
 function changeMonth(offset) {

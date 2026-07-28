@@ -127,8 +127,10 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
   .mobile-shift-badge.rest { color: #06371d; background: var(--green); }
   .mobile-shift-badge.night { color: #fff; background: var(--black); }
   .mobile-shift-badge.day { color: var(--ink); background: #eef2ef; }
-  .query-form { margin-top: 18px; }
-  .query-form .button { flex: 1 0 100%; }
+  .query-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
+  .query-form label { min-width: 0; width: 100%; }
+  .query-form select, .query-form input { min-width: 0; width: 100%; }
+  .query-form .button { grid-column: 1 / -1; width: 100%; }
   .query-result { margin-top: 18px; }
 }
 
