@@ -89,7 +89,8 @@ td.day { background: #fff; }
 .query-result { grid-column: 1 / -1; min-height: 64px; padding: 18px; border-radius: 12px; font-weight: 800; line-height: 1.6; background: #edf8f0; color: #12552d; }
 .query-result.is-empty { color: var(--muted); background: #f3f5f3; font-weight: 600; }
 .query-result.is-rest { color: #075228; background: #dcf8e7; }
-.query-result.is-work { color: #fff; background: #17241b; }
+.query-result.is-night { color: #fff; background: var(--black); }
+.query-result.is-day { color: var(--ink); background: #fff; border: 1px solid #c7d1ca; }
 .query-result strong { font-size: 1.1rem; }
 footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.82rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

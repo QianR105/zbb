@@ -143,7 +143,7 @@ function showQueryResult(name, date) {
   const shift = getShift(name, date);
   const rest = shift === "休";
   const resultText = rest ? "休息" : shift;
-  queryResult.className = `query-result ${rest ? "is-rest" : "is-work"}`;
+  queryResult.className = `query-result is-${cellClass(shift)}`;
   queryResult.innerHTML = `<strong>${name}</strong> · ${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日：<strong>${resultText}</strong>`;
 }
 
