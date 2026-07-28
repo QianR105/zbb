@@ -96,8 +96,11 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
 
 @media (max-width: 760px) {
   body { overflow-x: hidden; }
-  .page-shell { width: calc(100% - 20px); max-width: 1440px; min-width: 0; padding-top: 25px; }
+  .page-shell { display: flex; flex-direction: column; width: calc(100% - 20px); max-width: 1440px; min-width: 0; padding-top: 25px; }
   .panel, .month-panel { min-width: 0; }
+  .hero { order: 0; }
+  .query-panel { order: 1; }
+  .month-panel { order: 2; }
   .hero { margin-bottom: 20px; }
   .panel { padding: 18px 14px; border-radius: 15px; }
   .panel-heading, .query-panel { display: block; }
