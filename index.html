@@ -9,10 +9,6 @@
   </head>
   <body>
     <main class="page-shell">
-      <header class="hero">
-        <h1>值班表</h1>
-      </header>
-
       <section class="panel month-panel" aria-labelledby="month-title">
         <div class="panel-heading">
           <div>
@@ -34,7 +30,7 @@
 
         <div class="month-navigation" aria-label="月份切换">
           <button id="previous-month" class="button button-secondary" type="button" aria-label="查看上个月">‹ <span>上个月</span></button>
-          <p id="current-month" aria-live="polite"></p>
+          <button id="return-current-month" class="button button-current" type="button">回到本月</button>
           <button id="next-month" class="button button-secondary" type="button" aria-label="查看下个月"><span>下个月</span> ›</button>
         </div>
 
@@ -50,6 +46,7 @@
           <table id="schedule-table">
             <caption class="sr-only">全员月度值班表</caption>
           </table>
+          <div id="schedule-crosshair" class="schedule-crosshair" aria-hidden="true"></div>
         </div>
         <div id="mobile-schedule" class="mobile-schedule" aria-label="手机端按日值班表"></div>
       </section>
@@ -57,7 +54,7 @@
       <section class="panel query-panel" aria-label="快速查询">
         <div>
           <p class="section-kicker">快速查询</p>
-          <p class="query-description">选择姓名和日期，即可查看当天是否上班及具体班次。</p>
+          <p class="query-description">选择姓氏和日期，即可查看当天是否上班</p>
         </div>
         <form id="query-form" class="query-form">
           <label>
@@ -70,9 +67,7 @@
           </label>
           <button class="button button-primary" type="submit">查询值班</button>
         </form>
-        <div id="query-result" class="query-result is-empty" role="status" aria-live="polite">
-          请选择姓名和日期后查询
-        </div>
+        <div id="query-result" class="query-result is-empty" role="status" aria-live="polite"></div>
       </section>
     </main>
 
