@@ -45,11 +45,16 @@ const mobileSchedule = document.querySelector("#mobile-schedule");
 const staffSelect = document.querySelector("#staff-select");
 const dateInput = document.querySelector("#date-input");
 const queryResult = document.querySelector("#query-result");
+const shiftOverrides = {};
 
 let displayedDate = getInitialDate();
 let dragStartCell = null;
 let dragStartPoint = null;
 let didDrag = false;
+let longPressTimer = null;
+let exchangeMode = false;
+let exchangeTargetCell = null;
+let exchangeSource = null;
 
 function getInitialDate() {
   const today = new Date();
@@ -79,7 +84,14 @@ function positiveModulo(value, divisor) {
   return ((value % divisor) + divisor) % divisor;
 }
 
+function overrideKey(name, date) {
+  return `${name}|${toIso(date)}`;
+}
+
 function getShift(name, date) {
+  const key = overrideKey(name, date);
+  if (Object.prototype.hasOwnProperty.call(shiftOverrides, key)) return shiftOverrides[key];
+
   const person = staff.find((item) => item.name === name);
   if (!person) return "";
 
@@ -177,6 +189,26 @@ document.querySelector("#return-current-month").addEventListener("click", () => 
   renderMonth(today.getFullYear(), today.getMonth());
 });
 
+document.addEventListener("keydown", (event) => {
+  if (!window.matchMedia("(min-width: 761px)").matches) return;
+  if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+
+  if (exchangeMode && exchangeSource) {
+    event.preventDefault();
+    if (!event.repeat) {
+      clearExchangePreview();
+      changeMonth(event.key === "ArrowLeft" ? -1 : 1);
+    }
+    return;
+  }
+
+  const target = event.target;
+  if (target.matches("input, select, textarea, button") || target.isContentEditable) return;
+
+  event.preventDefault();
+  changeMonth(event.key === "ArrowLeft" ? -1 : 1);
+});
+
 table.addEventListener("click", (event) => {
   if (didDrag) {
     event.stopPropagation();
@@ -185,6 +217,10 @@ table.addEventListener("click", (event) => {
   const cell = event.target.closest("td");
   if (!cell) return;
 
+  showSchedulePosition(cell);
+});
+
+function showSchedulePosition(cell) {
   table.querySelectorAll("td.is-selected").forEach((item) => item.classList.remove("is-selected"));
   cell.classList.add("is-selected");
 
@@ -193,7 +229,7 @@ table.addEventListener("click", (event) => {
   scheduleCrosshair.style.setProperty("--cross-x", `${cellBox.left - tableBox.left + cellBox.width / 2}px`);
   scheduleCrosshair.style.setProperty("--cross-y", `${cellBox.top - tableBox.top + cellBox.height / 2}px`);
   scheduleCrosshair.classList.add("is-visible");
-});
+}
 
 function highlightRange(endCell) {
   if (!dragStartCell) return;
@@ -226,36 +262,163 @@ function clearRangeHighlight() {
   });
 }
 
+function clearSchedulePosition() {
+  scheduleCrosshair.classList.remove("is-visible");
+  table.querySelectorAll("td.is-selected").forEach((item) => item.classList.remove("is-selected"));
+}
+
+function clearExchangePreview() {
+  table.querySelectorAll(".is-exchange-source, .is-exchange-target").forEach((item) => {
+    item.classList.remove("is-exchange-source", "is-exchange-target");
+  });
+  exchangeTargetCell = null;
+}
+
+function dateForCell(cell) {
+  return new Date(displayedDate.getFullYear(), displayedDate.getMonth(), Number(cell.dataset.dayIndex) + 1);
+}
+
+function scheduleEntryForCell(cell) {
+  return {
+    name: staff[Number(cell.dataset.rowIndex)].name,
+    date: dateForCell(cell)
+  };
+}
+
+function swapScheduleEntries(source, targetCell) {
+  if (!source || !targetCell) return;
+
+  const target = scheduleEntryForCell(targetCell);
+  if (source.name === target.name && toIso(source.date) === toIso(target.date)) return;
+
+  const sourceName = source.name;
+  const targetName = target.name;
+  const sourceDate = source.date;
+  const targetDate = dateForCell(targetCell);
+  const sourceKey = overrideKey(sourceName, sourceDate);
+  const targetKey = overrideKey(targetName, targetDate);
+  const sourceShift = getShift(sourceName, sourceDate);
+  const targetShift = getShift(targetName, targetDate);
+
+  shiftOverrides[sourceKey] = targetShift;
+  shiftOverrides[targetKey] = sourceShift;
+  renderMonth(displayedDate.getFullYear(), displayedDate.getMonth());
+}
+
 table.addEventListener("pointerdown", (event) => {
   if (!event.target.closest("td")) return;
   dragStartCell = event.target.closest("td[data-row-index]");
   dragStartPoint = { x: event.clientX, y: event.clientY };
   didDrag = false;
-  scheduleCrosshair.classList.remove("is-visible");
-  table.querySelectorAll("td.is-selected").forEach((item) => item.classList.remove("is-selected"));
+  exchangeMode = false;
+  exchangeSource = null;
+  clearExchangePreview();
+  // 普通单击在按下时立即定位；只有真正拖动或长按时才会取消定位。
+  showSchedulePosition(dragStartCell);
+  clearRangeHighlight();
+  table.setPointerCapture?.(event.pointerId);
+  longPressTimer = window.setTimeout(() => {
+    if (!dragStartCell) return;
+    exchangeMode = true;
+    didDrag = true;
+    exchangeSource = scheduleEntryForCell(dragStartCell);
+    clearRangeHighlight();
+    clearSchedulePosition();
+    dragStartCell.classList.add("is-exchange-source");
+  }, 500);
 });
 
 table.addEventListener("pointermove", (event) => {
   if (!dragStartCell) return;
-  if (Math.abs(event.clientX - dragStartPoint.x) < 6 && Math.abs(event.clientY - dragStartPoint.y) < 6) return;
   const target = document.elementFromPoint(event.clientX, event.clientY)?.closest("td[data-row-index][data-day-index]");
+
+  if (exchangeMode) {
+    if (!target || target === dragStartCell) {
+      table.querySelectorAll("td.is-exchange-target").forEach((item) => item.classList.remove("is-exchange-target"));
+      exchangeTargetCell = null;
+      return;
+    }
+    if (target === exchangeTargetCell) return;
+    table.querySelectorAll("td.is-exchange-target").forEach((item) => item.classList.remove("is-exchange-target"));
+    exchangeTargetCell = target;
+    exchangeTargetCell.classList.add("is-exchange-target");
+    return;
+  }
+
+  if (Math.abs(event.clientX - dragStartPoint.x) < 6 && Math.abs(event.clientY - dragStartPoint.y) < 6) return;
+  window.clearTimeout(longPressTimer);
+  longPressTimer = null;
   if (!target) return;
   didDrag = true;
+  clearSchedulePosition();
   highlightRange(target);
 });
 
-function stopDragging() {
+function stopDragging(event, shouldSwap = true) {
+  const pressedCell = dragStartCell;
+  const wasExchange = exchangeMode;
+  const releasedCell = document.elementFromPoint(event.clientX, event.clientY)?.closest("td[data-row-index][data-day-index]");
+  window.clearTimeout(longPressTimer);
+  longPressTimer = null;
+  if (shouldSwap && exchangeMode && exchangeTargetCell) swapScheduleEntries(exchangeSource, exchangeTargetCell);
+  clearExchangePreview();
+  exchangeMode = false;
+  exchangeSource = null;
   dragStartCell = null;
   dragStartPoint = null;
+  if (event?.pointerId !== undefined && table.hasPointerCapture?.(event.pointerId)) {
+    table.releasePointerCapture(event.pointerId);
+  }
+
+  // 正常单击在所有浏览器 click 事件结束后，再确认一次选中状态。
+  // 这样长按/拖拽逻辑不会让红框在松开鼠标的一刻被清除。
+  const isSingleCellClick = !wasExchange && pressedCell && (!didDrag || releasedCell === pressedCell || !releasedCell);
+  if (isSingleCellClick) {
+    didDrag = false;
+    window.setTimeout(() => {
+      clearRangeHighlight();
+      showSchedulePosition(pressedCell);
+    }, 0);
+  }
+
   window.setTimeout(() => {
     didDrag = false;
   }, 0);
 }
 
-table.addEventListener("pointerup", stopDragging);
-table.addEventListener("pointercancel", stopDragging);
+table.addEventListener("pointerup", (event) => stopDragging(event, true));
+table.addEventListener("pointercancel", (event) => stopDragging(event, false));
 
-document.addEventListener("click", clearRangeHighlight);
+document.addEventListener("click", (event) => {
+  clearRangeHighlight();
+  if (!event.target.closest("#schedule-table td")) clearSchedulePosition();
+});
+
+function scrollToPage(position) {
+  const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  const top = position === "top" ? 0 : position === "bottom" ? maxScroll : Math.round(maxScroll / 2);
+  window.scrollTo({ top, behavior: "smooth" });
+}
+
+function requireDoubleTap(selector, position) {
+  const button = document.querySelector(selector);
+  let lastTapAt = 0;
+
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    const now = Date.now();
+    if (now - lastTapAt <= 550) {
+      lastTapAt = 0;
+      scrollToPage(position);
+      return;
+    }
+    lastTapAt = now;
+  });
+}
+
+requireDoubleTap("#go-page-top", "top");
+requireDoubleTap("#go-page-middle", "middle");
+requireDoubleTap("#go-page-bottom", "bottom");
 
 document.querySelector("#query-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -265,7 +428,7 @@ document.querySelector("#query-form").addEventListener("submit", (event) => {
 });
 
 populateStaffOptions();
-dateInput.value = toIso(displayedDate);
+dateInput.value = toIso(new Date());
 renderMonth(displayedDate.getFullYear(), displayedDate.getMonth());
 
 // 供浏览器控制台核对，月表和查询功能均通过同一方法计算班次。

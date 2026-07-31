@@ -24,6 +24,8 @@ body {
 
 button, input, select { font: inherit; }
 
+.mobile-page-nav { display: none; }
+
 .page-shell { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 26px 0 32px; }
 .hero { text-align: center; margin: 0 auto 30px; }
 .eyebrow, .section-kicker { margin: 0; color: var(--green-dark); font-size: 0.83rem; font-weight: 800; letter-spacing: 0.14em; }
@@ -78,8 +80,12 @@ input:focus, select:focus, button:focus-visible, .table-scroll:focus { outline: 
 td.is-selected { position: relative; z-index: 6; outline: 3px solid #dc2626; outline-offset: -3px; }
 #schedule-table td.is-range-highlight { position: relative; z-index: 6; color: #fff; background: #dc2626; outline: 2px solid #991b1b; outline-offset: -2px; }
 #schedule-table thead th.is-range-date { color: #fff; background: #dc2626; box-shadow: inset 0 0 0 2px #991b1b; }
+#schedule-table td { cursor: grab; }
+#schedule-table td.is-exchange-source { position: relative; z-index: 7; color: #fff; background: #b45309; outline: 3px solid #78350f; outline-offset: -3px; cursor: grabbing; }
+#schedule-table td.is-exchange-target { position: relative; z-index: 7; outline: 3px dashed #b45309; outline-offset: -3px; }
 .mobile-schedule { display: none; }
 table { width: 100%; min-width: 0; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+#schedule-table, #schedule-table th, #schedule-table td { -webkit-user-select: none; user-select: none; }
 th, td { width: auto; min-width: 0; height: 58px; padding: 3px 1px; border-right: 1px solid #667069; border-bottom: 1px solid #667069; text-align: center; vertical-align: middle; white-space: nowrap; }
 thead th { height: 48px; font-weight: 700; background: #fff; }
 thead tr:first-child th { border-top: 0; }
@@ -142,6 +148,9 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
   .mobile-shift-badge.rest { color: #06371d; background: var(--green); }
   .mobile-shift-badge.night { color: #fff; background: var(--black); }
   .mobile-shift-badge.day { color: var(--ink); background: #eef2ef; }
+  .mobile-page-nav { position: fixed; z-index: 20; right: 10px; top: 50%; display: grid; gap: 8px; transform: translateY(-50%); }
+  .mobile-page-nav button { width: 40px; height: 40px; padding: 0; color: #0b6135; border: 1px solid rgba(8, 125, 64, 0.32); border-radius: 50%; background: rgba(255, 255, 255, 0.56); box-shadow: 0 3px 10px rgba(23, 43, 31, 0.12); font-size: 1.3rem; font-weight: 900; line-height: 1; opacity: 0.78; -webkit-tap-highlight-color: transparent; }
+  .mobile-page-nav button:active { background: rgba(9, 173, 88, 0.22); transform: scale(0.94); }
   .query-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
   .query-form label { min-width: 0; width: 100%; }
   .query-form select, .query-form input { min-width: 0; width: 100%; }
