@@ -18,7 +18,7 @@
           <div class="month-form" aria-label="选择查看月份">
             <label>
               <span>年份</span>
-              <input id="year-input" type="number" inputmode="numeric" min="2026" max="9999" aria-label="年份" />
+              <input id="year-input" type="number" inputmode="numeric" min="2026" max="2100" aria-label="年份" />
             </label>
             <label>
               <span>月份</span>
@@ -46,6 +46,7 @@
           <table id="schedule-table">
             <caption class="sr-only">全员月度值班表</caption>
           </table>
+          <div id="legal-overtime-overlays" class="legal-overtime-overlays" aria-hidden="true"></div>
           <div id="schedule-crosshair" class="schedule-crosshair" aria-hidden="true"></div>
         </div>
         <div id="mobile-schedule" class="mobile-schedule" aria-label="手机端按日值班表"></div>

@@ -1,7 +1,35 @@
 "use strict";
 
 const ANCHOR = { year: 2026, month: 7, day: 1 };
+const SCHEDULE_START_DATE = new Date(2026, 6, 1);
+const SCHEDULE_END_DATE = new Date(2100, 11, 1);
 const WEEKDAYS = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+const LEGAL_HOLIDAY_CACHE = new Map();
+const SOLAR_TERM_MINUTES = [0, 21208, 42467, 63836, 85337, 107014, 128867, 150921, 173149, 195551, 218072, 240693, 263343, 285989, 308563, 331033, 353350, 375494, 397447, 419210, 440795, 462224, 483532, 504758];
+// 1900—2100 年农历闰月及大小月数据表，用于离线换算，不依赖浏览器农历实现。
+const LUNAR_INFO = [
+  0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
+  0x04ae0,0x0a5b6,0x0a4d0,0x0d250,0x1d255,0x0b540,0x0d6a0,0x0ada2,0x095b0,0x14977,
+  0x04970,0x0a4b0,0x0b4b5,0x06a50,0x06d40,0x1ab54,0x02b60,0x09570,0x052f2,0x04970,
+  0x06566,0x0d4a0,0x0ea50,0x06e95,0x05ad0,0x02b60,0x186e3,0x092e0,0x1c8d7,0x0c950,
+  0x0d4a0,0x1d8a6,0x0b550,0x056a0,0x1a5b4,0x025d0,0x092d0,0x0d2b2,0x0a950,0x0b557,
+  0x06ca0,0x0b550,0x15355,0x04da0,0x0a5b0,0x14573,0x052b0,0x0a9a8,0x0e950,0x06aa0,
+  0x0aea6,0x0ab50,0x04b60,0x0aae4,0x0a570,0x05260,0x0f263,0x0d950,0x05b57,0x056a0,
+  0x096d0,0x04dd5,0x04ad0,0x0a4d0,0x0d4d4,0x0d250,0x0d558,0x0b540,0x0b6a0,0x195a6,
+  0x095b0,0x049b0,0x0a974,0x0a4b0,0x0b27a,0x06a50,0x06d40,0x0af46,0x0ab60,0x09570,
+  0x04af5,0x04970,0x064b0,0x074a3,0x0ea50,0x06b58,0x05ac0,0x0ab60,0x096d5,0x092e0,
+  0x0c960,0x0d954,0x0d4a0,0x0da50,0x07552,0x056a0,0x0abb7,0x025d0,0x092d0,0x0cab5,
+  0x0a950,0x0b4a0,0x0baa4,0x0ad50,0x055d9,0x04ba0,0x0a5b0,0x15176,0x052b0,0x0a930,
+  0x07954,0x06aa0,0x0ad50,0x05b52,0x04b60,0x0a6e6,0x0a4e0,0x0d260,0x0ea65,0x0d530,
+  0x05aa0,0x076a3,0x096d0,0x04afb,0x04ad0,0x0a4d0,0x1d0b6,0x0d250,0x0d520,0x0dd45,
+  0x0b5a0,0x056d0,0x055b2,0x049b0,0x0a577,0x0a4b0,0x0aa50,0x1b255,0x06d20,0x0ada0,
+  0x14b63,0x09370,0x049f8,0x04970,0x064b0,0x168a6,0x0ea50,0x06b20,0x1a6c4,0x0aae0,
+  0x092e0,0x0d2e3,0x0c960,0x0d557,0x0d4a0,0x0da50,0x05d55,0x056a0,0x0a6d0,0x055d4,
+  0x052d0,0x0a9b8,0x0a950,0x0b4a0,0x0b6a6,0x0ad50,0x055a0,0x0aba4,0x0a5b0,0x052b0,
+  0x0b273,0x06930,0x07337,0x06aa0,0x0ad50,0x14b55,0x04b60,0x0a570,0x054e4,0x0d160,
+  0x0e968,0x0d520,0x0daa0,0x16aa6,0x056d0,0x04ae0,0x0a9d4,0x0a4d0,0x0d150,0x0f252,
+  0x0d520
+];
 
 // 图片中的 2026-07-01 至 2026-08-18；其余七位人员每 49 天重复一次。
 const staff = [
@@ -41,11 +69,17 @@ const monthInput = document.querySelector("#month-input");
 const table = document.querySelector("#schedule-table");
 const tableScroll = document.querySelector(".table-scroll");
 const scheduleCrosshair = document.querySelector("#schedule-crosshair");
+const legalOvertimeOverlays = document.querySelector("#legal-overtime-overlays");
 const mobileSchedule = document.querySelector("#mobile-schedule");
 const staffSelect = document.querySelector("#staff-select");
 const dateInput = document.querySelector("#date-input");
 const queryResult = document.querySelector("#query-result");
 const shiftOverrides = {};
+
+document.querySelector(".legend").insertAdjacentHTML(
+  "beforeend",
+  "<span id=\"legal-holiday-legend\"><i class=\"legend-swatch legal-overtime\"></i>无</span>"
+);
 
 let displayedDate = getInitialDate();
 let dragStartCell = null;
@@ -55,11 +89,13 @@ let longPressTimer = null;
 let exchangeMode = false;
 let exchangeTargetCell = null;
 let exchangeSource = null;
+let splitOptionCell = null;
+let dragSourcePart = null;
+let dragSourcePartElement = null;
 
 function getInitialDate() {
   const today = new Date();
-  const anchorDate = new Date(ANCHOR.year, ANCHOR.month - 1, ANCHOR.day);
-  return today < anchorDate ? anchorDate : new Date(today.getFullYear(), today.getMonth(), 1);
+  return today < SCHEDULE_START_DATE ? new Date(SCHEDULE_START_DATE) : new Date(today.getFullYear(), today.getMonth(), 1);
 }
 
 function dateFromIso(iso) {
@@ -72,6 +108,90 @@ function toIso(date) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function addDays(date, days) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function lunarLeapMonth(year) {
+  return LUNAR_INFO[year - 1900] & 0xf;
+}
+
+function lunarLeapDays(year) {
+  const leapMonth = lunarLeapMonth(year);
+  return leapMonth ? (LUNAR_INFO[year - 1900] & 0x10000 ? 30 : 29) : 0;
+}
+
+function lunarMonthDays(year, month) {
+  return LUNAR_INFO[year - 1900] & (0x10000 >> month) ? 30 : 29;
+}
+
+function lunarYearDays(year) {
+  let days = 348;
+  for (let bit = 0x8000; bit > 0x8; bit >>= 1) {
+    if (LUNAR_INFO[year - 1900] & bit) days += 1;
+  }
+  return days + lunarLeapDays(year);
+}
+
+function findLunarFestivalDate(year, month, day) {
+  if (year < 1900 || year > 2100 || month < 1 || month > 12) return null;
+
+  let offset = day - 1;
+  for (let lunarYear = 1900; lunarYear < year; lunarYear += 1) offset += lunarYearDays(lunarYear);
+  for (let lunarMonth = 1; lunarMonth < month; lunarMonth += 1) {
+    offset += lunarMonthDays(year, lunarMonth);
+    if (lunarLeapMonth(year) === lunarMonth) offset += lunarLeapDays(year);
+  }
+
+  return addDays(new Date(1900, 0, 31), offset);
+}
+
+function qingmingDate(year) {
+  const base = Date.UTC(1900, 0, 6, 2, 5);
+  const timestamp = base + 31556925974.7 * (year - 1900) + SOLAR_TERM_MINUTES[6] * 60000;
+  const date = new Date(timestamp);
+  return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function addLegalHoliday(holidays, date, name) {
+  holidays.set(toIso(date), name);
+}
+
+function legalHolidaysForYear(year) {
+  if (LEGAL_HOLIDAY_CACHE.has(year)) return LEGAL_HOLIDAY_CACHE.get(year);
+
+  const holidays = new Map();
+  addLegalHoliday(holidays, new Date(year, 0, 1), "元旦");
+  addLegalHoliday(holidays, qingmingDate(year), "清明节");
+  addLegalHoliday(holidays, new Date(year, 4, 1), "劳动节");
+  addLegalHoliday(holidays, new Date(year, 4, 2), "劳动节");
+  addLegalHoliday(holidays, new Date(year, 9, 1), "国庆节");
+  addLegalHoliday(holidays, new Date(year, 9, 2), "国庆节");
+  addLegalHoliday(holidays, new Date(year, 9, 3), "国庆节");
+
+  const springFestival = findLunarFestivalDate(year, 1, 1);
+  if (springFestival) {
+    [-1, 0, 1, 2].forEach((offset) => addLegalHoliday(holidays, addDays(springFestival, offset), "春节"));
+  }
+  const dragonBoatFestival = findLunarFestivalDate(year, 5, 5);
+  if (dragonBoatFestival) addLegalHoliday(holidays, dragonBoatFestival, "端午节");
+  const midAutumnFestival = findLunarFestivalDate(year, 8, 15);
+  if (midAutumnFestival) addLegalHoliday(holidays, midAutumnFestival, "中秋节");
+
+  LEGAL_HOLIDAY_CACHE.set(year, holidays);
+  return holidays;
+}
+
+function legalHolidayName(date) {
+  return legalHolidaysForYear(date.getFullYear()).get(toIso(date)) || "";
+}
+
+function isLegalOvertimeDate(date) {
+  return Boolean(legalHolidayName(date));
 }
 
 function dateDifferenceInDays(date) {
@@ -104,28 +224,60 @@ function getShift(name, date) {
   return person.cycle[positiveModulo(dateDifferenceInDays(date), 49)];
 }
 
+function shiftParts(shift) {
+  return String(shift).split("|");
+}
+
+function displayShift(shift) {
+  return shiftParts(shift).join(" / ");
+}
+
+function shiftCellContent(shift) {
+  const parts = shiftParts(shift);
+  if (parts.length === 1) return shift;
+  return `<span class="split-shift" data-shift-part="${parts[0]}">${parts[0]}</span><span class="split-divider" aria-hidden="true"></span><span class="split-shift" data-shift-part="${parts[1]}">${parts[1]}</span>`;
+}
+
+function isSplittableShift(shift) {
+  return shift === "\u65e9+\u4e2d" || shift === "\u4e2d+\u665a";
+}
+
 function cellClass(shift) {
   if (shift === "休") return "rest";
   return shift.includes("晚") ? "night" : "day";
 }
 
 function renderMonth(year, monthIndex) {
-  displayedDate = new Date(year, monthIndex, 1);
+  const requestedDate = new Date(year, monthIndex, 1);
+  displayedDate = requestedDate < SCHEDULE_START_DATE ? new Date(SCHEDULE_START_DATE) : requestedDate > SCHEDULE_END_DATE ? new Date(SCHEDULE_END_DATE) : requestedDate;
   const displayYear = displayedDate.getFullYear();
   const displayMonthIndex = displayedDate.getMonth();
   const numberOfDays = new Date(displayYear, displayMonthIndex + 1, 0).getDate();
 
   yearInput.value = displayYear;
   monthInput.value = displayMonthIndex + 1;
+  document.querySelector("#previous-month").disabled = displayedDate.getTime() <= SCHEDULE_START_DATE.getTime();
+  document.querySelector("#next-month").disabled = displayedDate.getTime() >= SCHEDULE_END_DATE.getTime();
   document.querySelector("#month-title").textContent = `${displayYear} 年 ${displayMonthIndex + 1} 月值班表`;
 
   const dates = Array.from({ length: numberOfDays }, (_, index) => new Date(displayYear, displayMonthIndex, index + 1));
-  const dateHeader = dates.map((date, index) => `<th data-day-index="${index}" class="${isWeekend(date) ? "weekend" : ""}" scope="col">${date.getDate()}</th>`).join("");
-  const weekdayHeader = dates.map((date, index) => `<th data-day-index="${index}" class="weekday ${isWeekend(date) ? "weekend" : ""}" scope="col">${WEEKDAYS[date.getDay()]}</th>`).join("");
+  const dateHeader = dates.map((date, index) => {
+    const holidayClass = isLegalOvertimeDate(date) ? " legal-overtime" : "";
+    const holidayTitle = isLegalOvertimeDate(date) ? " title=\"法定节假日加班工资日\"" : "";
+    return `<th data-day-index="${index}" class="${isWeekend(date) ? "weekend" : ""}${holidayClass}" scope="col"${holidayTitle}>${date.getDate()}</th>`;
+  }).join("");
+  const weekdayHeader = dates.map((date, index) => {
+    const holidayClass = isLegalOvertimeDate(date) ? " legal-overtime" : "";
+    const holidayTitle = isLegalOvertimeDate(date) ? " title=\"法定节假日加班工资日\"" : "";
+    return `<th data-day-index="${index}" class="weekday ${isWeekend(date) ? "weekend" : ""}${holidayClass}" scope="col"${holidayTitle}>${WEEKDAYS[date.getDay()]}</th>`;
+  }).join("");
   const rows = staff.map((person, staffIndex) => {
     const cells = dates.map((date, index) => {
       const shift = getShift(person.name, date);
-      return `<td data-row-index="${staffIndex}" data-day-index="${index}" class="${cellClass(shift)}">${shift}</td>`;
+      const splitCellClass = shiftParts(shift).length > 1 ? " split-cell" : "";
+      const holidayClass = isLegalOvertimeDate(date) ? " legal-overtime" : "";
+      const holidayTitle = isLegalOvertimeDate(date) ? " title=\"法定节假日加班工资日\"" : "";
+      return `<td data-row-index="${staffIndex}" data-day-index="${index}" class="${cellClass(shift)}${splitCellClass}${holidayClass}"${holidayTitle}>${shiftCellContent(shift)}</td>`;
     }).join("");
     return `<tr data-row-index="${staffIndex}"><th class="staff-name" scope="row">${person.name}</th>${cells}</tr>`;
   }).join("");
@@ -138,17 +290,63 @@ function renderMonth(year, monthIndex) {
     <tbody>${rows}</tbody>`;
 
   scheduleCrosshair.classList.remove("is-visible");
+  renderLegalOvertimeOverlays(dates);
+  updateLegalHolidayLegend(dates);
 
   renderMobileSchedule(dates);
+}
+
+function updateLegalHolidayLegend(dates) {
+  const holidayNames = [...new Set(dates.map(legalHolidayName).filter(Boolean))];
+  document.querySelector("#legal-holiday-legend").innerHTML = `<i class="legend-swatch legal-overtime"></i>${holidayNames.length ? holidayNames.join("、") : "无"}`;
+}
+
+function positionLegalOvertimeOverlays() {
+  const containerBox = tableScroll.getBoundingClientRect();
+  legalOvertimeOverlays.querySelectorAll(".legal-overtime-column").forEach((overlay) => {
+    const startIndex = overlay.dataset.startIndex;
+    const endIndex = overlay.dataset.endIndex;
+    const firstHeader = table.querySelector(`thead th[data-day-index="${startIndex}"]`);
+    const lastHeader = table.querySelector(`thead th[data-day-index="${endIndex}"]`);
+    const lastCell = table.querySelector(`tbody tr:last-child td[data-day-index="${endIndex}"]`);
+    if (!firstHeader || !lastHeader || !lastCell) return;
+    const firstHeaderBox = firstHeader.getBoundingClientRect();
+    const lastHeaderBox = lastHeader.getBoundingClientRect();
+    const lastCellBox = lastCell.getBoundingClientRect();
+    overlay.style.left = `${firstHeaderBox.left - containerBox.left}px`;
+    overlay.style.top = `${firstHeaderBox.top - containerBox.top}px`;
+    overlay.style.width = `${lastHeaderBox.right - firstHeaderBox.left}px`;
+    overlay.style.height = `${lastCellBox.bottom - firstHeaderBox.top}px`;
+  });
+}
+
+function renderLegalOvertimeOverlays(dates) {
+  const groups = [];
+  let index = 0;
+  while (index < dates.length) {
+    if (!isLegalOvertimeDate(dates[index])) {
+      index += 1;
+      continue;
+    }
+    const startIndex = index;
+    while (index + 1 < dates.length && isLegalOvertimeDate(dates[index + 1])) index += 1;
+    groups.push({ startIndex, endIndex: index });
+    index += 1;
+  }
+
+  legalOvertimeOverlays.innerHTML = groups
+    .map((group) => `<div class="legal-overtime-column" data-start-index="${group.startIndex}" data-end-index="${group.endIndex}"></div>`)
+    .join("");
+  window.requestAnimationFrame(positionLegalOvertimeOverlays);
 }
 
 function renderMobileSchedule(dates) {
   mobileSchedule.innerHTML = dates.map((date) => {
     const shifts = staff.map((person) => {
       const shift = getShift(person.name, date);
-      return `<div class="mobile-shift"><span class="mobile-shift-name">${person.name}</span><span class="mobile-shift-badge ${cellClass(shift)}">${shift}</span></div>`;
+      return `<div class="mobile-shift"><span class="mobile-shift-name">${person.name}</span><span class="mobile-shift-badge ${cellClass(shift)}">${displayShift(shift)}</span></div>`;
     }).join("");
-    return `<article class="mobile-day-card"><header class="mobile-day-heading ${isWeekend(date) ? "weekend" : ""}"><span class="mobile-day-number">${date.getMonth() + 1} 月 ${date.getDate()} 日</span><span class="mobile-day-weekday">${WEEKDAYS[date.getDay()]}</span></header><div class="mobile-shifts">${shifts}</div></article>`;
+    return `<article class="mobile-day-card${isLegalOvertimeDate(date) ? " legal-overtime" : ""}"><header class="mobile-day-heading ${isWeekend(date) ? "weekend" : ""}"><span class="mobile-day-number">${date.getMonth() + 1} 月 ${date.getDate()} 日</span><span class="mobile-day-weekday">${WEEKDAYS[date.getDay()]}</span></header><div class="mobile-shifts">${shifts}</div></article>`;
   }).join("");
 }
 
@@ -159,7 +357,7 @@ function isWeekend(date) {
 function showQueryResult(name, date) {
   const shift = getShift(name, date);
   const rest = shift === "休";
-  const resultText = rest ? "休息" : shift;
+  const resultText = rest ? "休息" : displayShift(shift);
   queryResult.className = `query-result is-${cellClass(shift)}`;
   queryResult.innerHTML = `<strong>${name}</strong> · ${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日（${WEEKDAYS[date.getDay()]}）：<strong>${resultText}</strong>`;
 }
@@ -175,8 +373,8 @@ function populateStaffOptions() {
 document.querySelector("#go-month").addEventListener("click", () => {
   const year = Number(yearInput.value);
   const month = Number(monthInput.value);
-  if (!Number.isInteger(year) || !Number.isInteger(month) || year < 2026 || month < 1 || month > 12) {
-    window.alert("请输入 2026 年及以后的有效年份，以及 1 至 12 的月份。");
+  if (!Number.isInteger(year) || !Number.isInteger(month) || year < 2026 || year > 2100 || month < 1 || month > 12 || new Date(year, month - 1, 1) < SCHEDULE_START_DATE) {
+    window.alert("排班表仅提供 2026 年 7 月至 2100 年的月份。");
     return;
   }
   renderMonth(year, month - 1);
@@ -268,21 +466,146 @@ function clearSchedulePosition() {
 }
 
 function clearExchangePreview() {
-  table.querySelectorAll(".is-exchange-source, .is-exchange-target").forEach((item) => {
-    item.classList.remove("is-exchange-source", "is-exchange-target");
+  table.querySelectorAll(".is-exchange-source, .is-exchange-target, .is-exchange-source-part, .is-exchange-source-top, .is-exchange-source-bottom").forEach((item) => {
+    item.classList.remove("is-exchange-source", "is-exchange-target", "is-exchange-source-part", "is-exchange-source-top", "is-exchange-source-bottom");
   });
   exchangeTargetCell = null;
+}
+
+function clearSplitOption() {
+  table.querySelectorAll(".split-action").forEach((button) => button.remove());
+  table.querySelectorAll("td.is-split-option").forEach((cell) => cell.classList.remove("is-split-option"));
+  splitOptionCell = null;
+}
+
+function splitScheduleEntry(cell) {
+  const entry = scheduleEntryForCell(cell);
+  const shift = getShift(entry.name, entry.date);
+  if (!isSplittableShift(shift)) return;
+  shiftOverrides[overrideKey(entry.name, entry.date)] = shift.replace("+", "|");
+  renderMonth(displayedDate.getFullYear(), displayedDate.getMonth());
+}
+
+function combinedSplitShift(shift) {
+  const parts = shiftParts(shift);
+  if (parts.length !== 2) return null;
+  return mergedSingleShift(parts[0], parts[1]);
+}
+
+function cancelSplitScheduleEntry(cell) {
+  const entry = scheduleEntryForCell(cell);
+  const combinedShift = combinedSplitShift(getShift(entry.name, entry.date));
+  if (!combinedShift) return;
+  shiftOverrides[overrideKey(entry.name, entry.date)] = combinedShift;
+  renderMonth(displayedDate.getFullYear(), displayedDate.getMonth());
+}
+
+function showSplitOption(cell, action) {
+  clearSplitOption();
+  splitOptionCell = cell;
+  cell.classList.add("is-split-option");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "split-action";
+  button.textContent = action === "split" ? "拆分" : "取消拆分";
+  button.setAttribute("aria-label", action === "split" ? "拆分为两个单班次" : "取消拆分并恢复双班次");
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (action === "split") splitScheduleEntry(cell);
+    else cancelSplitScheduleEntry(cell);
+  });
+  cell.appendChild(button);
 }
 
 function dateForCell(cell) {
   return new Date(displayedDate.getFullYear(), displayedDate.getMonth(), Number(cell.dataset.dayIndex) + 1);
 }
 
-function scheduleEntryForCell(cell) {
+function scheduleEntryForCell(cell, part = null) {
   return {
     name: staff[Number(cell.dataset.rowIndex)].name,
-    date: dateForCell(cell)
+    date: dateForCell(cell),
+    part
   };
+}
+
+function mergedSingleShift(firstShift, secondShift) {
+  const morning = "\u65e9";
+  const middle = "\u4e2d";
+  const night = "\u665a";
+
+  if (firstShift === morning && secondShift === middle || firstShift === middle && secondShift === morning) {
+    return "\u65e9+\u4e2d";
+  }
+  if (firstShift === middle && secondShift === night || firstShift === night && secondShift === middle) {
+    return "\u4e2d+\u665a";
+  }
+  return null;
+}
+
+function setSplitParts(entry, parts) {
+  const remaining = parts.filter((part) => part !== "\u4f11");
+  shiftOverrides[overrideKey(entry.name, entry.date)] = remaining.length ? remaining.join("|") : "\u4f11";
+}
+
+function moveSplitPart(source, targetCell) {
+  const sourceParts = shiftParts(getShift(source.name, source.date));
+  const sourcePartIndex = sourceParts.indexOf(source.part);
+  if (sourcePartIndex < 0) return;
+
+  const target = scheduleEntryForCell(targetCell);
+  const targetShift = getShift(target.name, target.date);
+  const rest = "\u4f11";
+
+  if (targetShift === rest) {
+    sourceParts.splice(sourcePartIndex, 1);
+    setSplitParts(source, sourceParts);
+    shiftOverrides[overrideKey(target.name, target.date)] = source.part;
+  } else if (["\u65e9", "\u4e2d", "\u665a"].includes(targetShift)) {
+    const mergedShift = mergedSingleShift(source.part, targetShift);
+    if (mergedShift) {
+      sourceParts.splice(sourcePartIndex, 1);
+      setSplitParts(source, sourceParts);
+      shiftOverrides[overrideKey(target.name, target.date)] = mergedShift;
+    } else if (source.part === targetShift) {
+      return;
+    } else {
+      sourceParts[sourcePartIndex] = targetShift;
+      setSplitParts(source, sourceParts);
+      shiftOverrides[overrideKey(target.name, target.date)] = source.part;
+    }
+  } else {
+    return;
+  }
+
+  renderMonth(displayedDate.getFullYear(), displayedDate.getMonth());
+}
+
+function mergeOrSwapScheduleEntries(source, targetCell) {
+  if (!source || !targetCell) return;
+
+  if (source.part) {
+    moveSplitPart(source, targetCell);
+    return;
+  }
+
+  const target = scheduleEntryForCell(targetCell);
+  const sourceShift = getShift(source.name, source.date);
+  const targetShift = getShift(target.name, target.date);
+  const mergedShift = mergedSingleShift(sourceShift, targetShift);
+
+  // 两个单班次优先融合；相同班次不改变，其他无法融合的组合继续按交换处理。
+  if (["\u65e9", "\u4e2d", "\u665a"].includes(sourceShift) && ["\u65e9", "\u4e2d", "\u665a"].includes(targetShift)) {
+    if (mergedShift) {
+      shiftOverrides[overrideKey(source.name, source.date)] = "\u4f11";
+      shiftOverrides[overrideKey(target.name, target.date)] = mergedShift;
+      renderMonth(displayedDate.getFullYear(), displayedDate.getMonth());
+      return;
+    }
+    if (sourceShift === targetShift) return;
+  }
+
+  swapScheduleEntries(source, targetCell);
 }
 
 function swapScheduleEntries(source, targetCell) {
@@ -306,12 +629,28 @@ function swapScheduleEntries(source, targetCell) {
 }
 
 table.addEventListener("pointerdown", (event) => {
+  if (event.button === 2) return;
+  if (event.target.closest(".split-action")) return;
+  if (event.target.closest(".split-divider")) return;
   if (!event.target.closest("td")) return;
   dragStartCell = event.target.closest("td[data-row-index]");
   dragStartPoint = { x: event.clientX, y: event.clientY };
+  dragSourcePartElement = event.target.closest(".split-shift");
+  dragSourcePart = dragSourcePartElement?.dataset.shiftPart || null;
+  if (dragStartCell.classList.contains("split-cell")) {
+    const parts = shiftParts(getShift(
+      staff[Number(dragStartCell.dataset.rowIndex)].name,
+      dateForCell(dragStartCell)
+    ));
+    const cellBox = dragStartCell.getBoundingClientRect();
+    const partIndex = event.clientY - cellBox.top < cellBox.height / 2 ? 0 : 1;
+    dragSourcePart = parts[partIndex];
+    dragSourcePartElement = dragStartCell.querySelectorAll(".split-shift")[partIndex];
+  }
   didDrag = false;
   exchangeMode = false;
   exchangeSource = null;
+  clearSplitOption();
   clearExchangePreview();
   // 普通单击在按下时立即定位；只有真正拖动或长按时才会取消定位。
   showSchedulePosition(dragStartCell);
@@ -319,12 +658,19 @@ table.addEventListener("pointerdown", (event) => {
   table.setPointerCapture?.(event.pointerId);
   longPressTimer = window.setTimeout(() => {
     if (!dragStartCell) return;
+    const entry = scheduleEntryForCell(dragStartCell, dragSourcePart);
     exchangeMode = true;
     didDrag = true;
-    exchangeSource = scheduleEntryForCell(dragStartCell);
+    exchangeSource = entry;
     clearRangeHighlight();
     clearSchedulePosition();
-    dragStartCell.classList.add("is-exchange-source");
+    if (dragSourcePartElement) {
+      dragSourcePartElement.classList.add("is-exchange-source-part");
+      const partElements = dragStartCell.querySelectorAll(".split-shift");
+      dragStartCell.classList.add(dragSourcePartElement === partElements[0] ? "is-exchange-source-top" : "is-exchange-source-bottom");
+    } else {
+      dragStartCell.classList.add("is-exchange-source");
+    }
   }, 500);
 });
 
@@ -360,10 +706,12 @@ function stopDragging(event, shouldSwap = true) {
   const releasedCell = document.elementFromPoint(event.clientX, event.clientY)?.closest("td[data-row-index][data-day-index]");
   window.clearTimeout(longPressTimer);
   longPressTimer = null;
-  if (shouldSwap && exchangeMode && exchangeTargetCell) swapScheduleEntries(exchangeSource, exchangeTargetCell);
+  if (shouldSwap && exchangeMode && exchangeTargetCell) mergeOrSwapScheduleEntries(exchangeSource, exchangeTargetCell);
   clearExchangePreview();
   exchangeMode = false;
   exchangeSource = null;
+  dragSourcePart = null;
+  dragSourcePartElement = null;
   dragStartCell = null;
   dragStartPoint = null;
   if (event?.pointerId !== undefined && table.hasPointerCapture?.(event.pointerId)) {
@@ -388,6 +736,17 @@ function stopDragging(event, shouldSwap = true) {
 
 table.addEventListener("pointerup", (event) => stopDragging(event, true));
 table.addEventListener("pointercancel", (event) => stopDragging(event, false));
+
+table.addEventListener("contextmenu", (event) => {
+  const cell = event.target.closest("td[data-row-index][data-day-index]");
+  if (!cell) return;
+  event.preventDefault();
+  const entry = scheduleEntryForCell(cell);
+  const shift = getShift(entry.name, entry.date);
+  if (isSplittableShift(shift)) showSplitOption(cell, "split");
+  else if (combinedSplitShift(shift)) showSplitOption(cell, "cancel");
+  else clearSplitOption();
+});
 
 document.addEventListener("click", (event) => {
   clearRangeHighlight();
@@ -419,6 +778,7 @@ function requireDoubleTap(selector, position) {
 requireDoubleTap("#go-page-top", "top");
 requireDoubleTap("#go-page-middle", "middle");
 requireDoubleTap("#go-page-bottom", "bottom");
+window.addEventListener("resize", () => window.requestAnimationFrame(positionLegalOvertimeOverlays));
 
 document.querySelector("#query-form").addEventListener("submit", (event) => {
   event.preventDefault();
