@@ -75,6 +75,7 @@ const staffSelect = document.querySelector("#staff-select");
 const dateInput = document.querySelector("#date-input");
 const queryResult = document.querySelector("#query-result");
 const shiftOverrides = {};
+const GOLD_FLOW_DURATION_MS = 1800;
 
 document.querySelector(".legend").insertAdjacentHTML(
   "beforeend",
@@ -96,6 +97,11 @@ let dragSourcePartElement = null;
 function getInitialDate() {
   const today = new Date();
   return today < SCHEDULE_START_DATE ? new Date(SCHEDULE_START_DATE) : new Date(today.getFullYear(), today.getMonth(), 1);
+}
+
+// 让每次重绘出的鎏金边框接入同一时间轴，避免拆分、移动等操作后从头闪烁。
+function goldFlowDelay() {
+  return `-${Date.now() % GOLD_FLOW_DURATION_MS}ms`;
 }
 
 function dateFromIso(iso) {
@@ -334,19 +340,22 @@ function renderLegalOvertimeOverlays(dates) {
     index += 1;
   }
 
+  const flowDelay = goldFlowDelay();
   legalOvertimeOverlays.innerHTML = groups
-    .map((group) => `<div class="legal-overtime-column" data-start-index="${group.startIndex}" data-end-index="${group.endIndex}"></div>`)
+    .map((group) => `<div class="legal-overtime-column" style="animation-delay: ${flowDelay}" data-start-index="${group.startIndex}" data-end-index="${group.endIndex}"></div>`)
     .join("");
   window.requestAnimationFrame(positionLegalOvertimeOverlays);
 }
 
 function renderMobileSchedule(dates) {
   mobileSchedule.innerHTML = dates.map((date) => {
+    const legalOvertime = isLegalOvertimeDate(date);
+    const flowStyle = legalOvertime ? ` style="animation-delay: ${goldFlowDelay()}"` : "";
     const shifts = staff.map((person) => {
       const shift = getShift(person.name, date);
       return `<div class="mobile-shift"><span class="mobile-shift-name">${person.name}</span><span class="mobile-shift-badge ${cellClass(shift)}">${displayShift(shift)}</span></div>`;
     }).join("");
-    return `<article class="mobile-day-card${isLegalOvertimeDate(date) ? " legal-overtime" : ""}"><header class="mobile-day-heading ${isWeekend(date) ? "weekend" : ""}"><span class="mobile-day-number">${date.getMonth() + 1} 月 ${date.getDate()} 日</span><span class="mobile-day-weekday">${WEEKDAYS[date.getDay()]}</span></header><div class="mobile-shifts">${shifts}</div></article>`;
+    return `<article class="mobile-day-card${legalOvertime ? " legal-overtime" : ""}${flowStyle}><header class="mobile-day-heading ${isWeekend(date) ? "weekend" : ""}"><span class="mobile-day-number">${date.getMonth() + 1} 月 ${date.getDate()} 日</span><span class="mobile-day-weekday">${WEEKDAYS[date.getDay()]}</span></header><div class="mobile-shifts">${shifts}</div></article>`;
   }).join("");
 }
 
