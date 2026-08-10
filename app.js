@@ -355,7 +355,7 @@ function renderMobileSchedule(dates) {
       const shift = getShift(person.name, date);
       return `<div class="mobile-shift"><span class="mobile-shift-name">${person.name}</span><span class="mobile-shift-badge ${cellClass(shift)}">${displayShift(shift)}</span></div>`;
     }).join("");
-    return `<article class="mobile-day-card${legalOvertime ? " legal-overtime" : ""}${flowStyle}><header class="mobile-day-heading ${isWeekend(date) ? "weekend" : ""}"><span class="mobile-day-number">${date.getMonth() + 1} 月 ${date.getDate()} 日</span><span class="mobile-day-weekday">${WEEKDAYS[date.getDay()]}</span></header><div class="mobile-shifts">${shifts}</div></article>`;
+    return `<article class="mobile-day-card${isWeekend(date) ? " weekend-day" : ""}${legalOvertime ? " legal-overtime" : ""}" data-schedule-date="${toIso(date)}"${flowStyle}><header class="mobile-day-heading ${isWeekend(date) ? "weekend" : ""}"><span class="mobile-day-number">${date.getMonth() + 1} 月 ${date.getDate()} 日</span><span class="mobile-day-weekday">${WEEKDAYS[date.getDay()]}</span></header><div class="mobile-shifts">${shifts}</div></article>`;
   }).join("");
 }
 
@@ -768,7 +768,31 @@ function scrollToPage(position) {
   window.scrollTo({ top, behavior: "smooth" });
 }
 
-function requireDoubleTap(selector, position) {
+function scrollToTodaySchedule() {
+  const today = new Date();
+  const firstAvailableDay = new Date(2026, 6, 1);
+  const lastAvailableDay = new Date(2100, 11, 31);
+  const targetDate = today < firstAvailableDay ? firstAvailableDay : today > lastAvailableDay ? lastAvailableDay : today;
+
+  renderMonth(targetDate.getFullYear(), targetDate.getMonth());
+  window.requestAnimationFrame(() => {
+    mobileSchedule.querySelector(`[data-schedule-date="${toIso(targetDate)}"]`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  });
+}
+
+function showDoubleTapTip(button, tip) {
+  button.dataset.doubleTapTip = tip;
+  button.classList.add("show-double-tap-tip");
+  window.clearTimeout(button.doubleTapTipTimer);
+  button.doubleTapTipTimer = window.setTimeout(() => {
+    button.classList.remove("show-double-tap-tip");
+  }, 1600);
+}
+
+function requireDoubleTap(selector, action, tip) {
   const button = document.querySelector(selector);
   let lastTapAt = 0;
 
@@ -777,16 +801,19 @@ function requireDoubleTap(selector, position) {
     const now = Date.now();
     if (now - lastTapAt <= 550) {
       lastTapAt = 0;
-      scrollToPage(position);
+      button.classList.remove("show-double-tap-tip");
+      action();
       return;
     }
     lastTapAt = now;
+    showDoubleTapTip(button, tip);
   });
 }
 
-requireDoubleTap("#go-page-top", "top");
-requireDoubleTap("#go-page-middle", "middle");
-requireDoubleTap("#go-page-bottom", "bottom");
+requireDoubleTap("#go-page-top", () => scrollToPage("top"), "再点一次：回到顶部");
+requireDoubleTap("#go-page-middle", () => scrollToPage("middle"), "再点一次：前往中间");
+requireDoubleTap("#go-today-schedule", scrollToTodaySchedule, "再点一次：定位今天排班");
+requireDoubleTap("#go-page-bottom", () => scrollToPage("bottom"), "再点一次：前往底部");
 window.addEventListener("resize", () => window.requestAnimationFrame(positionLegalOvertimeOverlays));
 
 document.querySelector("#query-form").addEventListener("submit", (event) => {

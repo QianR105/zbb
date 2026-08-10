@@ -154,21 +154,23 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
   .month-navigation .button { width: 100%; min-width: 0; padding: 0 4px; font-size: 0.78rem; }
   .table-scroll { display: none; }
   .mobile-schedule { display: grid; gap: 12px; }
-  .mobile-day-card { overflow: hidden; border: 1px solid #d4ded6; border-radius: 12px; background: #fff; box-shadow: 0 3px 10px rgba(23, 43, 31, 0.04); }
+  .mobile-day-card { overflow: hidden; border: 1px solid #d4ded6; border-radius: 12px; background: #edf8f0; box-shadow: 0 3px 10px rgba(23, 43, 31, 0.04); }
+  .mobile-day-card.weekend-day { background: #fff0f2; }
   .mobile-day-card.legal-overtime { border: 2px solid #d49b1d; box-shadow: 0 0 0 1px rgba(255, 230, 142, 0.9), 0 3px 10px rgba(121, 81, 5, 0.18); animation: gold-column-flow 1.8s ease-in-out infinite; }
   .mobile-day-heading { display: flex; align-items: baseline; gap: 8px; padding: 10px 12px; background: #edf8f0; }
   .mobile-day-heading.weekend { background: #f9d4d9; }
   .mobile-day-number { font-size: 1.15rem; font-weight: 900; }
   .mobile-day-weekday { color: #536059; font-size: 0.83rem; font-weight: 700; }
   .mobile-shifts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #dce4de; }
-  .mobile-shift { display: flex; align-items: center; justify-content: space-between; min-width: 0; padding: 9px 10px; background: #fff; font-size: 0.87rem; }
+  .mobile-shift { display: flex; align-items: center; justify-content: space-between; min-width: 0; padding: 9px 10px; background: rgba(255, 255, 255, 0.92); font-size: 0.87rem; }
   .mobile-shift-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
   .mobile-shift-badge { flex: 0 0 auto; min-width: 32px; margin-left: 5px; padding: 2px 4px; border-radius: 4px; text-align: center; font-weight: 900; }
   .mobile-shift-badge.rest { color: #06371d; background: var(--green); }
   .mobile-shift-badge.night { color: #fff; background: var(--black); }
   .mobile-shift-badge.day { color: var(--ink); background: #eef2ef; }
   .mobile-page-nav { position: fixed; z-index: 20; right: 10px; top: 50%; display: grid; gap: 8px; transform: translateY(-50%); }
-  .mobile-page-nav button { width: 40px; height: 40px; padding: 0; color: #0b6135; border: 1px solid rgba(8, 125, 64, 0.32); border-radius: 50%; background: rgba(255, 255, 255, 0.56); box-shadow: 0 3px 10px rgba(23, 43, 31, 0.12); font-size: 1.3rem; font-weight: 900; line-height: 1; opacity: 0.78; -webkit-tap-highlight-color: transparent; }
+  .mobile-page-nav button { position: relative; width: 40px; height: 40px; padding: 0; color: #0b6135; border: 1px solid rgba(8, 125, 64, 0.32); border-radius: 50%; background: rgba(255, 255, 255, 0.56); box-shadow: 0 3px 10px rgba(23, 43, 31, 0.12); font-size: 1.3rem; font-weight: 900; line-height: 1; opacity: 0.78; -webkit-tap-highlight-color: transparent; }
+  .mobile-page-nav button.show-double-tap-tip::after { position: absolute; top: 50%; right: calc(100% + 8px); width: max-content; max-width: 132px; padding: 6px 8px; color: #fff; border-radius: 7px; background: rgba(17, 50, 32, 0.9); box-shadow: 0 2px 7px rgba(23, 43, 31, 0.18); content: attr(data-double-tap-tip); font-size: 0.72rem; font-weight: 700; line-height: 1.25; transform: translateY(-50%); pointer-events: none; }
   .mobile-page-nav button:active { background: rgba(9, 173, 88, 0.22); transform: scale(0.94); }
   .query-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
   .query-form label { min-width: 0; width: 100%; }
