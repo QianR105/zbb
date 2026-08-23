@@ -96,6 +96,7 @@ let dragSourcePart = null;
 let dragSourcePartElement = null;
 let headerRangeStartDay = null;
 let suppressNextRangeClear = false;
+let scheduleFullscreenScrollTop = 0;
 
 function getInitialDate() {
   const today = new Date();
@@ -387,6 +388,15 @@ function updateScheduleFullscreenState(active) {
   scheduleFullscreenButton.textContent = active ? "× 退出" : "⛶ 全屏";
   scheduleFullscreenButton.setAttribute("aria-pressed", String(active));
   window.requestAnimationFrame(positionLegalOvertimeOverlays);
+  if (!active) restoreSchedulePagePosition();
+}
+
+function restoreSchedulePagePosition() {
+  // 浏览器退出全屏时会重新显示工具栏并改变可视高度，延后恢复能避免页面向上跳动。
+  window.setTimeout(() => {
+    const maximumTop = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    window.scrollTo({ top: Math.min(scheduleFullscreenScrollTop, maximumTop), behavior: "auto" });
+  }, 80);
 }
 
 function currentFullscreenElement() {
@@ -415,6 +425,7 @@ async function toggleScheduleFullscreen() {
       return;
     }
 
+    scheduleFullscreenScrollTop = window.scrollY;
     updateScheduleFullscreenState(true);
     try {
       await requestPageFullscreen();

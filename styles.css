@@ -25,6 +25,7 @@ body {
 button, input, select { font: inherit; }
 
 .mobile-page-nav, .schedule-fullscreen-button { display: none; }
+.fullscreen-tip { display: none; }
 
 .page-shell { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 26px 0 32px; }
 .hero { text-align: center; margin: 0 auto 30px; }
@@ -194,6 +195,7 @@ body.is-schedule-fullscreen .panel-heading { display: block; min-height: 0; }
 body.is-schedule-fullscreen .panel-heading > div:first-child { display: block; }
 body.is-schedule-fullscreen .section-kicker { display: none; }
 body.is-schedule-fullscreen #month-title { position: static; width: 100%; margin: 0; padding: 0; text-align: center; transform: none; font-size: 1.1rem; }
+body.is-schedule-fullscreen .fullscreen-tip { display: block; margin: 2px 0 0; color: var(--muted); text-align: center; font-size: 0.62rem; line-height: 1.2; }
 body.is-schedule-fullscreen .month-form { display: none; }
 body.is-schedule-fullscreen .month-navigation { grid-template-columns: 96px 1fr 96px; gap: 7px; margin: 5px 0; }
 body.is-schedule-fullscreen .month-navigation .button { width: 96px; min-height: 27px; padding: 0 6px; font-size: 0.68rem; }
