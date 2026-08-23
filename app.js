@@ -94,6 +94,8 @@ let exchangeSource = null;
 let splitOptionCell = null;
 let dragSourcePart = null;
 let dragSourcePartElement = null;
+let headerRangeStartDay = null;
+let suppressNextRangeClear = false;
 
 function getInitialDate() {
   const today = new Date();
@@ -241,7 +243,10 @@ function displayShift(shift) {
 
 function shiftCellContent(shift) {
   const parts = shiftParts(shift);
-  if (parts.length === 1) return shift;
+  if (parts.length === 1) {
+    const compactShift = shift.replace("+", "");
+    return `<span class="shift-full">${shift}</span><span class="shift-compact" aria-label="${shift}">${compactShift}</span>`;
+  }
   return `<span class="split-shift" data-shift-part="${parts[0]}">${parts[0]}</span><span class="split-divider" aria-hidden="true"></span><span class="split-shift" data-shift-part="${parts[1]}">${parts[1]}</span>`;
 }
 
@@ -276,7 +281,8 @@ function renderMonth(year, monthIndex) {
   const weekdayHeader = dates.map((date, index) => {
     const holidayClass = isLegalOvertimeDate(date) ? " legal-overtime" : "";
     const holidayTitle = isLegalOvertimeDate(date) ? " title=\"法定节假日加班工资日\"" : "";
-    return `<th data-day-index="${index}" class="weekday ${isWeekend(date) ? "weekend" : ""}${holidayClass}" scope="col"${holidayTitle}>${WEEKDAYS[date.getDay()]}</th>`;
+    const weekday = WEEKDAYS[date.getDay()];
+    return `<th data-day-index="${index}" class="weekday ${isWeekend(date) ? "weekend" : ""}${holidayClass}" scope="col"${holidayTitle}><span class="weekday-full">${weekday}</span><span class="weekday-short" aria-label="${weekday}">${weekday.replace("星期", "")}</span></th>`;
   }).join("");
   const rows = staff.map((person, staffIndex) => {
     const cells = dates.map((date, index) => {
@@ -457,6 +463,11 @@ table.addEventListener("click", (event) => {
   showSchedulePosition(cell);
 });
 
+// 日期/星期表头选列后不让点击事件冒泡到页面，标红会一直保留到用户点击其他位置。
+table.addEventListener("click", (event) => {
+  if (event.target.closest("thead th[data-day-index]")) event.stopPropagation();
+});
+
 function showSchedulePosition(cell) {
   table.querySelectorAll("td.is-selected").forEach((item) => item.classList.remove("is-selected"));
   cell.classList.add("is-selected");
@@ -490,6 +501,20 @@ function highlightRange(endCell) {
   table.querySelectorAll("thead [data-day-index]").forEach((header) => {
     const day = Number(header.dataset.dayIndex);
     if (day >= minDay && day <= maxDay) header.classList.add("is-range-date");
+  });
+}
+
+function highlightDateColumns(startDay, endDay) {
+  const firstDay = Math.min(startDay, endDay);
+  const lastDay = Math.max(startDay, endDay);
+  clearRangeHighlight();
+  table.querySelectorAll("td[data-day-index]").forEach((cell) => {
+    const day = Number(cell.dataset.dayIndex);
+    if (day >= firstDay && day <= lastDay) cell.classList.add("is-range-highlight");
+  });
+  table.querySelectorAll("thead [data-day-index]").forEach((header) => {
+    const day = Number(header.dataset.dayIndex);
+    if (day >= firstDay && day <= lastDay) header.classList.add("is-range-date");
   });
 }
 
@@ -668,6 +693,15 @@ function swapScheduleEntries(source, targetCell) {
 }
 
 table.addEventListener("pointerdown", (event) => {
+  const header = event.target.closest("thead th[data-day-index]");
+  if (header && event.button === 0) {
+    event.preventDefault();
+    headerRangeStartDay = Number(header.dataset.dayIndex);
+    clearSchedulePosition();
+    clearSplitOption();
+    highlightDateColumns(headerRangeStartDay, headerRangeStartDay);
+    return;
+  }
   if (event.button === 2) return;
   if (event.target.closest(".split-action")) return;
   if (event.target.closest(".split-divider")) return;
@@ -714,6 +748,11 @@ table.addEventListener("pointerdown", (event) => {
 });
 
 table.addEventListener("pointermove", (event) => {
+  if (headerRangeStartDay !== null) {
+    const header = document.elementFromPoint(event.clientX, event.clientY)?.closest("thead th[data-day-index]");
+    if (header) highlightDateColumns(headerRangeStartDay, Number(header.dataset.dayIndex));
+    return;
+  }
   if (!dragStartCell) return;
   const target = document.elementFromPoint(event.clientX, event.clientY)?.closest("td[data-row-index][data-day-index]");
 
@@ -773,8 +812,26 @@ function stopDragging(event, shouldSwap = true) {
   }, 0);
 }
 
-table.addEventListener("pointerup", (event) => stopDragging(event, true));
-table.addEventListener("pointercancel", (event) => stopDragging(event, false));
+function stopHeaderRangeSelection(event) {
+  if (headerRangeStartDay === null) return false;
+  headerRangeStartDay = null;
+  // 拖动表头松开时浏览器仍会补发一次 click；忽略这一次，避免刚选中的列立即被清除。
+  suppressNextRangeClear = true;
+  window.setTimeout(() => {
+    suppressNextRangeClear = false;
+  }, 450);
+  if (event?.pointerId !== undefined && table.hasPointerCapture?.(event.pointerId)) {
+    table.releasePointerCapture(event.pointerId);
+  }
+  return true;
+}
+
+table.addEventListener("pointerup", (event) => {
+  if (!stopHeaderRangeSelection(event)) stopDragging(event, true);
+});
+table.addEventListener("pointercancel", (event) => {
+  if (!stopHeaderRangeSelection(event)) stopDragging(event, false);
+});
 
 table.addEventListener("contextmenu", (event) => {
   const cell = event.target.closest("td[data-row-index][data-day-index]");
@@ -788,7 +845,11 @@ table.addEventListener("contextmenu", (event) => {
 });
 
 document.addEventListener("click", (event) => {
-  clearRangeHighlight();
+  if (suppressNextRangeClear) {
+    suppressNextRangeClear = false;
+    return;
+  }
+  if (!event.target.closest("#schedule-table td, #schedule-table thead th[data-day-index]")) clearRangeHighlight();
   if (!event.target.closest("#schedule-table td")) clearSchedulePosition();
 });
 
