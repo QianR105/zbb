@@ -389,25 +389,45 @@ function updateScheduleFullscreenState(active) {
   window.requestAnimationFrame(positionLegalOvertimeOverlays);
 }
 
-async function toggleScheduleFullscreen() {
-  const active = document.body.classList.contains("is-schedule-fullscreen");
-  if (active) {
-    if (document.fullscreenElement) await document.exitFullscreen?.();
-    updateScheduleFullscreenState(false);
-    screen.orientation?.unlock?.();
-    return;
-  }
+function currentFullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
 
-  updateScheduleFullscreenState(true);
+async function requestPageFullscreen() {
+  const requestFullscreen = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
+  if (requestFullscreen) await requestFullscreen.call(document.documentElement);
+}
+
+async function exitPageFullscreen() {
+  const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
+  if (exitFullscreen) await exitFullscreen.call(document);
+}
+
+async function toggleScheduleFullscreen() {
+  if (scheduleFullscreenButton.disabled) return;
+  scheduleFullscreenButton.disabled = true;
+  const active = document.body.classList.contains("is-schedule-fullscreen");
   try {
-    await document.documentElement.requestFullscreen?.();
-  } catch (_) {
-    // 少数手机浏览器不支持网页全屏时，仍提供隐藏查询区的横屏查看模式。
-  }
-  try {
-    await screen.orientation?.lock?.("landscape");
-  } catch (_) {
-    // 不支持锁定方向的浏览器可由用户手动横置手机查看。
+    if (active) {
+      if (currentFullscreenElement()) await exitPageFullscreen();
+      updateScheduleFullscreenState(false);
+      screen.orientation?.unlock?.();
+      return;
+    }
+
+    updateScheduleFullscreenState(true);
+    try {
+      await requestPageFullscreen();
+    } catch (_) {
+      // 少数手机浏览器不支持网页全屏时，仍提供隐藏查询区的横屏查看模式。
+    }
+    try {
+      await screen.orientation?.lock?.("landscape");
+    } catch (_) {
+      // 不支持锁定方向的浏览器可由用户手动横置手机查看。
+    }
+  } finally {
+    scheduleFullscreenButton.disabled = false;
   }
 }
 
@@ -906,12 +926,14 @@ requireDoubleTap("#go-page-middle", () => scrollToPage("middle"), "再点一次�
 requireDoubleTap("#go-today-schedule", scrollToTodaySchedule, "再点一次：定位今天排班");
 requireDoubleTap("#go-page-bottom", () => scrollToPage("bottom"), "再点一次：前往底部");
 scheduleFullscreenButton.addEventListener("click", toggleScheduleFullscreen);
-document.addEventListener("fullscreenchange", () => {
-  if (!document.fullscreenElement && document.body.classList.contains("is-schedule-fullscreen")) {
+function handleFullscreenChange() {
+  if (!currentFullscreenElement() && document.body.classList.contains("is-schedule-fullscreen")) {
     updateScheduleFullscreenState(false);
     screen.orientation?.unlock?.();
   }
-});
+}
+document.addEventListener("fullscreenchange", handleFullscreenChange);
+document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 window.addEventListener("resize", () => window.requestAnimationFrame(positionLegalOvertimeOverlays));
 
 document.querySelector("#query-form").addEventListener("submit", (event) => {
