@@ -201,7 +201,10 @@ body.is-schedule-fullscreen .month-navigation { grid-template-columns: 96px 1fr 
 body.is-schedule-fullscreen .month-navigation .button { width: 96px; min-height: 27px; padding: 0 6px; font-size: 0.68rem; }
 body.is-schedule-fullscreen .legend { display: none; }
 body.is-schedule-fullscreen .legend-swatch { width: 11px; height: 11px; }
-body.is-schedule-fullscreen .table-scroll { display: block !important; overflow: hidden; border-radius: 0; }
+body.is-schedule-fullscreen .table-scroll { display: block !important; max-height: calc(100vh - 84px); max-height: calc(100dvh - 84px); overflow: auto; padding-right: env(safe-area-inset-right, 0px); padding-left: env(safe-area-inset-left, 0px); border-radius: 0; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-color: #0b7d40 #dce8df; scrollbar-width: thin; }
+body.is-schedule-fullscreen .table-scroll::-webkit-scrollbar { width: 7px; height: 7px; }
+body.is-schedule-fullscreen .table-scroll::-webkit-scrollbar-track { background: #dce8df; }
+body.is-schedule-fullscreen .table-scroll::-webkit-scrollbar-thumb { border-radius: 6px; background: #0b7d40; }
 body.is-schedule-fullscreen th,
 body.is-schedule-fullscreen td { height: 26px; padding: 1px 0; font-size: clamp(0.48rem, 1.5vw, 0.68rem); line-height: 1.05; }
 body.is-schedule-fullscreen thead th { height: 22px; }

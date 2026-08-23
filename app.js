@@ -77,6 +77,7 @@ const queryResult = document.querySelector("#query-result");
 const scheduleFullscreenButton = document.querySelector("#schedule-fullscreen");
 const shiftOverrides = {};
 const GOLD_FLOW_DURATION_MS = 1800;
+const IS_WECHAT_BROWSER = /MicroMessenger/i.test(navigator.userAgent);
 
 document.querySelector(".legend").insertAdjacentHTML(
   "beforeend",
@@ -97,6 +98,7 @@ let dragSourcePartElement = null;
 let headerRangeStartDay = null;
 let suppressNextRangeClear = false;
 let scheduleFullscreenScrollTop = 0;
+let nativeScheduleFullscreenActive = false;
 
 function getInitialDate() {
   const today = new Date();
@@ -420,6 +422,7 @@ async function toggleScheduleFullscreen() {
   try {
     if (active) {
       if (currentFullscreenElement()) await exitPageFullscreen();
+      nativeScheduleFullscreenActive = false;
       updateScheduleFullscreenState(false);
       screen.orientation?.unlock?.();
       return;
@@ -427,10 +430,13 @@ async function toggleScheduleFullscreen() {
 
     scheduleFullscreenScrollTop = window.scrollY;
     updateScheduleFullscreenState(true);
-    try {
-      await requestPageFullscreen();
-    } catch (_) {
-      // 少数手机浏览器不支持网页全屏时，仍提供隐藏查询区的横屏查看模式。
+    if (!IS_WECHAT_BROWSER) {
+      try {
+        await requestPageFullscreen();
+        nativeScheduleFullscreenActive = Boolean(currentFullscreenElement());
+      } catch (_) {
+        // 少数手机浏览器不支持网页全屏时，仍提供隐藏查询区的横屏查看模式。
+      }
     }
     try {
       await screen.orientation?.lock?.("landscape");
@@ -938,7 +944,12 @@ requireDoubleTap("#go-today-schedule", scrollToTodaySchedule, "再点一次：�
 requireDoubleTap("#go-page-bottom", () => scrollToPage("bottom"), "再点一次：前往底部");
 scheduleFullscreenButton.addEventListener("click", toggleScheduleFullscreen);
 function handleFullscreenChange() {
-  if (!currentFullscreenElement() && document.body.classList.contains("is-schedule-fullscreen")) {
+  if (currentFullscreenElement()) {
+    nativeScheduleFullscreenActive = true;
+    return;
+  }
+  if (nativeScheduleFullscreenActive && document.body.classList.contains("is-schedule-fullscreen")) {
+    nativeScheduleFullscreenActive = false;
     updateScheduleFullscreenState(false);
     screen.orientation?.unlock?.();
   }
@@ -946,6 +957,7 @@ function handleFullscreenChange() {
 document.addEventListener("fullscreenchange", handleFullscreenChange);
 document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 window.addEventListener("resize", () => window.requestAnimationFrame(positionLegalOvertimeOverlays));
+tableScroll.addEventListener("scroll", () => window.requestAnimationFrame(positionLegalOvertimeOverlays), { passive: true });
 
 document.querySelector("#query-form").addEventListener("submit", (event) => {
   event.preventDefault();
