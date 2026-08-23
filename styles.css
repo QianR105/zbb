@@ -189,7 +189,7 @@ body.is-schedule-fullscreen .query-panel,
 body.is-schedule-fullscreen footer,
 body.is-schedule-fullscreen .mobile-page-nav,
 body.is-schedule-fullscreen .mobile-schedule { display: none !important; }
-body.is-schedule-fullscreen .month-panel { min-height: 100vh; margin: 0; padding: 6px 10px; border: 0; border-radius: 0; box-shadow: none; }
+body.is-schedule-fullscreen .month-panel { min-height: 100vh; margin: 0; padding: 6px 0 0; border: 0; border-radius: 0; box-shadow: none; }
 body.is-schedule-fullscreen .schedule-fullscreen-button { position: fixed; z-index: 30; top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); display: inline-flex; width: 62px; min-height: 28px; padding: 0; font-size: 0.7rem; white-space: nowrap; transform: none; }
 body.is-schedule-fullscreen .panel-heading { display: block; min-height: 0; }
 body.is-schedule-fullscreen .panel-heading > div:first-child { display: block; }
@@ -201,7 +201,7 @@ body.is-schedule-fullscreen .month-navigation { grid-template-columns: 96px 1fr 
 body.is-schedule-fullscreen .month-navigation .button { width: 96px; min-height: 27px; padding: 0 6px; font-size: 0.68rem; }
 body.is-schedule-fullscreen .legend { display: none; }
 body.is-schedule-fullscreen .legend-swatch { width: 11px; height: 11px; }
-body.is-schedule-fullscreen .table-scroll { display: block !important; overflow: hidden; border-radius: 5px; }
+body.is-schedule-fullscreen .table-scroll { display: block !important; overflow: hidden; border-radius: 0; }
 body.is-schedule-fullscreen th,
 body.is-schedule-fullscreen td { height: 26px; padding: 1px 0; font-size: clamp(0.48rem, 1.5vw, 0.68rem); line-height: 1.05; }
 body.is-schedule-fullscreen thead th { height: 22px; }
