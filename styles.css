@@ -190,7 +190,7 @@ body.is-schedule-fullscreen footer,
 body.is-schedule-fullscreen .mobile-page-nav,
 body.is-schedule-fullscreen .mobile-schedule { display: none !important; }
 body.is-schedule-fullscreen .month-panel { min-height: 100vh; margin: 0; padding: 6px 10px; border: 0; border-radius: 0; box-shadow: none; }
-body.is-schedule-fullscreen .schedule-fullscreen-button { position: fixed; z-index: 30; top: 8px; right: 10px; display: inline-flex; min-height: 28px; padding: 0 8px; font-size: 0.7rem; }
+body.is-schedule-fullscreen .schedule-fullscreen-button { position: fixed; z-index: 30; top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); display: inline-flex; width: 62px; min-height: 28px; padding: 0; font-size: 0.7rem; white-space: nowrap; transform: none; }
 body.is-schedule-fullscreen .panel-heading { display: block; min-height: 0; }
 body.is-schedule-fullscreen .panel-heading > div:first-child { display: block; }
 body.is-schedule-fullscreen .section-kicker { display: none; }
