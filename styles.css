@@ -24,7 +24,7 @@ body {
 
 button, input, select { font: inherit; }
 
-.mobile-page-nav { display: none; }
+.mobile-page-nav, .schedule-fullscreen-button { display: none; }
 
 .page-shell { width: min(1440px, calc(100% - 32px)); margin: 0 auto; padding: 26px 0 32px; }
 .hero { text-align: center; margin: 0 auto 30px; }
@@ -142,6 +142,7 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
   .hero { margin-bottom: 20px; }
   .panel { padding: 18px 14px; border-radius: 15px; }
   .month-panel { position: relative; }
+  .schedule-fullscreen-button { position: absolute; z-index: 2; top: 18px; right: 14px; display: inline-flex; align-items: center; justify-content: center; min-height: 32px; padding: 0 8px; color: #0b6135; border: 1px solid rgba(8, 125, 64, 0.32); border-radius: 8px; background: rgba(255, 255, 255, 0.78); box-shadow: 0 2px 7px rgba(23, 43, 31, 0.08); font-size: 0.72rem; font-weight: 800; touch-action: manipulation; }
   .panel-heading, .query-panel { display: block; }
   #month-title { text-align: center; }
   .month-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 17px; }
@@ -178,6 +179,33 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
   .query-form .button { grid-column: 1 / -1; width: 100%; }
   .query-result { margin-top: 18px; }
 }
+
+body.is-schedule-fullscreen { overflow: hidden; background: #f3f7f3; }
+body.is-schedule-fullscreen .page-shell { display: block; width: 100%; max-width: none; min-height: 100vh; padding: 0; }
+body.is-schedule-fullscreen .query-panel,
+body.is-schedule-fullscreen footer,
+body.is-schedule-fullscreen .mobile-page-nav,
+body.is-schedule-fullscreen .mobile-schedule { display: none !important; }
+body.is-schedule-fullscreen .month-panel { min-height: 100vh; margin: 0; padding: 9px 12px; border: 0; border-radius: 0; box-shadow: none; }
+body.is-schedule-fullscreen .schedule-fullscreen-button { position: fixed; z-index: 30; top: 8px; right: 10px; display: inline-flex; min-height: 28px; padding: 0 8px; font-size: 0.7rem; }
+body.is-schedule-fullscreen .panel-heading { display: block; min-height: 0; }
+body.is-schedule-fullscreen .panel-heading > div:first-child { display: block; }
+body.is-schedule-fullscreen .section-kicker { display: none; }
+body.is-schedule-fullscreen #month-title { position: static; width: 100%; margin: 0; padding: 0; text-align: center; transform: none; font-size: 1.25rem; }
+body.is-schedule-fullscreen .month-form { display: none; }
+body.is-schedule-fullscreen .month-navigation { grid-template-columns: 105px 1fr 105px; gap: 8px; margin: 8px 0; }
+body.is-schedule-fullscreen .month-navigation .button { width: 105px; min-height: 30px; padding: 0 8px; font-size: 0.74rem; }
+body.is-schedule-fullscreen .legend { gap: 6px 13px; margin: 0 0 7px; font-size: 0.7rem; }
+body.is-schedule-fullscreen .legend-swatch { width: 11px; height: 11px; }
+body.is-schedule-fullscreen .table-scroll { display: block !important; overflow: hidden; border-radius: 5px; }
+body.is-schedule-fullscreen th,
+body.is-schedule-fullscreen td { height: clamp(27px, 8vh, 34px); padding: 1px 0; font-size: clamp(0.48rem, 1.5vw, 0.7rem); }
+body.is-schedule-fullscreen thead th { height: clamp(25px, 7vh, 30px); }
+body.is-schedule-fullscreen .corner,
+body.is-schedule-fullscreen .staff-name { width: 64px; min-width: 64px; }
+body.is-schedule-fullscreen .staff-name { font-size: 0.78rem; }
+body.is-schedule-fullscreen .weekday { font-size: clamp(0.46rem, 1.25vw, 0.62rem); }
+body.is-schedule-fullscreen #schedule-table .split-shift { height: calc((clamp(27px, 8vh, 34px) - 3px) / 2); font-size: inherit; }
 
 
 @media (max-width: 390px) {

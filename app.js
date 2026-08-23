@@ -74,6 +74,7 @@ const mobileSchedule = document.querySelector("#mobile-schedule");
 const staffSelect = document.querySelector("#staff-select");
 const dateInput = document.querySelector("#date-input");
 const queryResult = document.querySelector("#query-result");
+const scheduleFullscreenButton = document.querySelector("#schedule-fullscreen");
 const shiftOverrides = {};
 const GOLD_FLOW_DURATION_MS = 1800;
 
@@ -373,6 +374,35 @@ function showQueryResult(name, date) {
 
 function changeMonth(offset) {
   renderMonth(displayedDate.getFullYear(), displayedDate.getMonth() + offset);
+}
+
+function updateScheduleFullscreenState(active) {
+  document.body.classList.toggle("is-schedule-fullscreen", active);
+  scheduleFullscreenButton.textContent = active ? "× 退出" : "⛶ 全屏";
+  scheduleFullscreenButton.setAttribute("aria-pressed", String(active));
+  window.requestAnimationFrame(positionLegalOvertimeOverlays);
+}
+
+async function toggleScheduleFullscreen() {
+  const active = document.body.classList.contains("is-schedule-fullscreen");
+  if (active) {
+    if (document.fullscreenElement) await document.exitFullscreen?.();
+    updateScheduleFullscreenState(false);
+    screen.orientation?.unlock?.();
+    return;
+  }
+
+  updateScheduleFullscreenState(true);
+  try {
+    await document.documentElement.requestFullscreen?.();
+  } catch (_) {
+    // 少数手机浏览器不支持网页全屏时，仍提供隐藏查询区的横屏查看模式。
+  }
+  try {
+    await screen.orientation?.lock?.("landscape");
+  } catch (_) {
+    // 不支持锁定方向的浏览器可由用户手动横置手机查看。
+  }
 }
 
 function populateStaffOptions() {
@@ -814,6 +844,13 @@ requireDoubleTap("#go-page-top", () => scrollToPage("top"), "再点一次：回�
 requireDoubleTap("#go-page-middle", () => scrollToPage("middle"), "再点一次：前往中间");
 requireDoubleTap("#go-today-schedule", scrollToTodaySchedule, "再点一次：定位今天排班");
 requireDoubleTap("#go-page-bottom", () => scrollToPage("bottom"), "再点一次：前往底部");
+scheduleFullscreenButton.addEventListener("click", toggleScheduleFullscreen);
+document.addEventListener("fullscreenchange", () => {
+  if (!document.fullscreenElement && document.body.classList.contains("is-schedule-fullscreen")) {
+    updateScheduleFullscreenState(false);
+    screen.orientation?.unlock?.();
+  }
+});
 window.addEventListener("resize", () => window.requestAnimationFrame(positionLegalOvertimeOverlays));
 
 document.querySelector("#query-form").addEventListener("submit", (event) => {
