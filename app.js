@@ -77,7 +77,6 @@ const queryResult = document.querySelector("#query-result");
 const scheduleFullscreenButton = document.querySelector("#schedule-fullscreen");
 const shiftOverrides = {};
 const GOLD_FLOW_DURATION_MS = 1800;
-const IS_WECHAT_BROWSER = /MicroMessenger/i.test(navigator.userAgent);
 
 document.querySelector(".legend").insertAdjacentHTML(
   "beforeend",
@@ -98,7 +97,6 @@ let dragSourcePartElement = null;
 let headerRangeStartDay = null;
 let suppressNextRangeClear = false;
 let scheduleFullscreenScrollTop = 0;
-let nativeScheduleFullscreenActive = false;
 
 function getInitialDate() {
   const today = new Date();
@@ -401,51 +399,35 @@ function restoreSchedulePagePosition() {
   }, 80);
 }
 
-function currentFullscreenElement() {
-  return document.fullscreenElement || document.webkitFullscreenElement || null;
-}
-
-async function requestPageFullscreen() {
-  const requestFullscreen = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
-  if (requestFullscreen) await requestFullscreen.call(document.documentElement);
-}
-
-async function exitPageFullscreen() {
-  const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen;
-  if (exitFullscreen) await exitFullscreen.call(document);
-}
-
-async function toggleScheduleFullscreen() {
-  if (scheduleFullscreenButton.disabled) return;
-  scheduleFullscreenButton.disabled = true;
-  const active = document.body.classList.contains("is-schedule-fullscreen");
+function requestLandscapeOrientation() {
   try {
-    if (active) {
-      if (currentFullscreenElement()) await exitPageFullscreen();
-      nativeScheduleFullscreenActive = false;
-      updateScheduleFullscreenState(false);
-      screen.orientation?.unlock?.();
-      return;
-    }
-
-    scheduleFullscreenScrollTop = window.scrollY;
-    updateScheduleFullscreenState(true);
-    if (!IS_WECHAT_BROWSER) {
-      try {
-        await requestPageFullscreen();
-        nativeScheduleFullscreenActive = Boolean(currentFullscreenElement());
-      } catch (_) {
-        // 少数手机浏览器不支持网页全屏时，仍提供隐藏查询区的横屏查看模式。
-      }
-    }
-    try {
-      await screen.orientation?.lock?.("landscape");
-    } catch (_) {
-      // 不支持锁定方向的浏览器可由用户手动横置手机查看。
-    }
-  } finally {
-    scheduleFullscreenButton.disabled = false;
+    const lockRequest = screen.orientation?.lock?.("landscape");
+    lockRequest?.catch?.(() => {});
+  } catch (_) {
+    // 部分内置浏览器不支持方向锁定，用户仍可手动横置手机。
   }
+}
+
+function releaseOrientation() {
+  try {
+    screen.orientation?.unlock?.();
+  } catch (_) {
+    // 不支持方向控制的浏览器无需额外处理。
+  }
+}
+
+function toggleScheduleFullscreen() {
+  const active = document.body.classList.contains("is-schedule-fullscreen");
+  if (active) {
+    updateScheduleFullscreenState(false);
+    releaseOrientation();
+    return;
+  }
+
+  scheduleFullscreenScrollTop = window.scrollY;
+  updateScheduleFullscreenState(true);
+  // 不依赖各浏览器不稳定的系统全屏接口，确保“退出”能立即响应。
+  requestLandscapeOrientation();
 }
 
 function populateStaffOptions() {
@@ -943,21 +925,7 @@ requireDoubleTap("#go-page-middle", () => scrollToPage("middle"), "再点一次�
 requireDoubleTap("#go-today-schedule", scrollToTodaySchedule, "再点一次：定位今天排班");
 requireDoubleTap("#go-page-bottom", () => scrollToPage("bottom"), "再点一次：前往底部");
 scheduleFullscreenButton.addEventListener("click", toggleScheduleFullscreen);
-function handleFullscreenChange() {
-  if (currentFullscreenElement()) {
-    nativeScheduleFullscreenActive = true;
-    return;
-  }
-  if (nativeScheduleFullscreenActive && document.body.classList.contains("is-schedule-fullscreen")) {
-    nativeScheduleFullscreenActive = false;
-    updateScheduleFullscreenState(false);
-    screen.orientation?.unlock?.();
-  }
-}
-document.addEventListener("fullscreenchange", handleFullscreenChange);
-document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
 window.addEventListener("resize", () => window.requestAnimationFrame(positionLegalOvertimeOverlays));
-tableScroll.addEventListener("scroll", () => window.requestAnimationFrame(positionLegalOvertimeOverlays), { passive: true });
 
 document.querySelector("#query-form").addEventListener("submit", (event) => {
   event.preventDefault();
