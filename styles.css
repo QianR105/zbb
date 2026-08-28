@@ -126,14 +126,30 @@ td.day { background: #fff; }
 .query-form { flex-wrap: wrap; }
 .query-form label { flex: 1 1 142px; }
 .query-form select, .query-form input { width: 100%; }
-.query-result { grid-column: 1 / -1; min-height: 64px; padding: 18px; border-radius: 12px; font-weight: 800; line-height: 1.6; background: #edf8f0; color: #12552d; }
+.query-result { display: flex; align-items: center; grid-column: 1 / -1; min-height: 64px; padding: 18px; border: 1px solid transparent; border-radius: 12px; font-weight: 800; line-height: 1.6; background: #edf8f0; color: #12552d; }
 .query-result.is-empty { display: none; }
 .query-result.is-rest { color: #075228; background: #dcf8e7; }
 .query-result.is-night { color: #fff; background: var(--black); }
 .query-result.is-day { color: var(--ink); background: #fff; border: 1px solid #c7d1ca; }
 .query-result strong { font-size: 1.1rem; }
+.query-day-navigation { display: flex; grid-column: 1 / -1; gap: 10px; margin-top: 12px; }
+.query-day-navigation[hidden] { display: none; }
+.query-day-navigation .button { flex: 1; }
+.summary-heading { display: flex; align-items: end; justify-content: space-between; gap: 18px; }
+.monthly-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 20px; }
+.summary-card { min-width: 0; padding: 15px; border: 1px solid #dce6de; border-radius: 12px; background: linear-gradient(145deg, #fff, #f2faf4); }
+.summary-name { display: block; margin-bottom: 10px; color: var(--green-dark); font-size: 1.12rem; font-weight: 900; }
+.summary-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin: 0; }
+.summary-values div { min-width: 0; text-align: center; }
+.summary-values dt { color: var(--muted); font-size: 0.72rem; white-space: nowrap; }
+.summary-values dd { margin: 4px 0 0; color: var(--ink); font-size: 1.1rem; font-weight: 900; }
+.summary-values small { margin-left: 1px; color: var(--muted); font-size: 0.66rem; font-weight: 700; }
 footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.82rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+@media (min-width: 761px) {
+  .query-panel { display: none; }
+}
 
 @media (max-width: 760px), (hover: none) and (pointer: coarse) {
   body { overflow-x: hidden; }
@@ -142,6 +158,7 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
   .hero { order: 0; }
   .query-panel { order: 1; }
   .month-panel { order: 2; }
+  .summary-panel { order: 3; }
   .hero { margin-bottom: 20px; }
   .panel { padding: 18px 14px; border-radius: 15px; }
   .month-panel { position: relative; }
@@ -168,7 +185,7 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
   .mobile-shifts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: #dce4de; }
   .mobile-shift { display: flex; align-items: center; justify-content: space-between; min-width: 0; padding: 9px 10px; background: rgba(255, 255, 255, 0.92); font-size: 0.87rem; }
   .mobile-shift-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
-  .mobile-shift-badge { flex: 0 0 auto; min-width: 32px; margin-left: 5px; padding: 2px 4px; border-radius: 4px; text-align: center; font-weight: 900; }
+  .mobile-shift-badge { flex: 0 0 52px; width: 52px; min-width: 52px; margin-left: 5px; padding: 2px 4px; border-radius: 4px; text-align: center; font-weight: 900; }
   .mobile-shift-badge.rest { color: #06371d; background: var(--green); }
   .mobile-shift-badge.night { color: #fff; background: var(--black); }
   .mobile-shift-badge.day { color: var(--ink); background: #eef2ef; }
@@ -181,11 +198,19 @@ footer { padding: 0 16px 28px; color: #607067; text-align: center; font-size: 0.
   .query-form select, .query-form input { min-width: 0; width: 100%; }
   .query-form .button { grid-column: 1 / -1; width: 100%; }
   .query-result { margin-top: 18px; }
+  .query-day-navigation { margin-top: 10px; }
+  .summary-heading { display: block; }
+  .monthly-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 16px; }
+  .summary-card { padding: 12px 10px; }
+  .summary-name { margin-bottom: 8px; font-size: 1rem; }
+  .summary-values dt { font-size: 0.67rem; }
+  .summary-values dd { font-size: 1rem; }
 }
 
 body.is-schedule-fullscreen { overflow: hidden; background: #f3f7f3; }
 body.is-schedule-fullscreen .page-shell { display: block; width: 100%; max-width: none; min-height: 100vh; padding: 0; }
 body.is-schedule-fullscreen .query-panel,
+body.is-schedule-fullscreen .summary-panel,
 body.is-schedule-fullscreen footer,
 body.is-schedule-fullscreen .mobile-page-nav,
 body.is-schedule-fullscreen .mobile-schedule { display: none !important; }

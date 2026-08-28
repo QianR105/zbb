@@ -75,6 +75,11 @@ const staffSelect = document.querySelector("#staff-select");
 const dateInput = document.querySelector("#date-input");
 const queryResult = document.querySelector("#query-result");
 const scheduleFullscreenButton = document.querySelector("#schedule-fullscreen");
+const summaryTitle = document.querySelector("#summary-title");
+const monthlySummary = document.querySelector("#monthly-summary");
+const queryDayNavigation = document.querySelector("#query-day-navigation");
+const queryPreviousDayButton = document.querySelector("#query-previous-day");
+const queryNextDayButton = document.querySelector("#query-next-day");
 const shiftOverrides = {};
 const GOLD_FLOW_DURATION_MS = 1800;
 
@@ -308,6 +313,7 @@ function renderMonth(year, monthIndex) {
   updateLegalHolidayLegend(dates);
 
   renderMobileSchedule(dates);
+  renderMonthlySummary(dates);
 }
 
 function updateLegalHolidayLegend(dates) {
@@ -367,6 +373,22 @@ function renderMobileSchedule(dates) {
   }).join("");
 }
 
+function renderMonthlySummary(dates) {
+  const firstDate = dates[0];
+  summaryTitle.textContent = `${firstDate.getFullYear()} 年 ${firstDate.getMonth() + 1} 月值班统计`;
+  monthlySummary.innerHTML = staff.map((person) => {
+    const statistics = dates.reduce((total, date) => {
+      const shift = getShift(person.name, date);
+      if (shift !== "休") total.workDays += 1;
+      if (shift.includes("晚")) total.nightDays += 1;
+      if (shift.includes("+") || shiftParts(shift).length > 1) total.doubleShiftDays += 1;
+      return total;
+    }, { workDays: 0, nightDays: 0, doubleShiftDays: 0 });
+
+    return `<article class="summary-card" role="listitem"><strong class="summary-name">${person.name}</strong><dl class="summary-values"><div><dt>上班</dt><dd>${statistics.workDays}<small>天</small></dd></div><div><dt>夜班</dt><dd>${statistics.nightDays}<small>天</small></dd></div><div><dt>双班次</dt><dd>${statistics.doubleShiftDays}<small>天</small></dd></div></dl></article>`;
+  }).join("");
+}
+
 function isWeekend(date) {
   return date.getDay() === 0 || date.getDay() === 6;
 }
@@ -377,6 +399,18 @@ function showQueryResult(name, date) {
   const resultText = rest ? "休息" : displayShift(shift);
   queryResult.className = `query-result is-${cellClass(shift)}`;
   queryResult.innerHTML = `<strong>${name}</strong> · ${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日（${WEEKDAYS[date.getDay()]}）：<strong>${resultText}</strong>`;
+  queryDayNavigation.hidden = false;
+  queryPreviousDayButton.disabled = date.getTime() <= SCHEDULE_START_DATE.getTime();
+  queryNextDayButton.disabled = date.getTime() >= new Date(2100, 11, 31).getTime();
+}
+
+function changeQueryDate(offset) {
+  const currentDate = dateFromIso(dateInput.value);
+  if (Number.isNaN(currentDate.getTime())) return;
+  currentDate.setDate(currentDate.getDate() + offset);
+  if (currentDate < SCHEDULE_START_DATE || currentDate > new Date(2100, 11, 31)) return;
+  dateInput.value = toIso(currentDate);
+  showQueryResult(staffSelect.value, currentDate);
 }
 
 function changeMonth(offset) {
@@ -933,6 +967,8 @@ document.querySelector("#query-form").addEventListener("submit", (event) => {
   if (Number.isNaN(date.getTime())) return;
   showQueryResult(staffSelect.value, date);
 });
+queryPreviousDayButton.addEventListener("click", () => changeQueryDate(-1));
+queryNextDayButton.addEventListener("click", () => changeQueryDate(1));
 
 populateStaffOptions();
 dateInput.value = toIso(new Date());
