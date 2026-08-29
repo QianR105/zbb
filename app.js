@@ -71,15 +71,11 @@ const tableScroll = document.querySelector(".table-scroll");
 const scheduleCrosshair = document.querySelector("#schedule-crosshair");
 const legalOvertimeOverlays = document.querySelector("#legal-overtime-overlays");
 const mobileSchedule = document.querySelector("#mobile-schedule");
-const staffSelect = document.querySelector("#staff-select");
-const dateInput = document.querySelector("#date-input");
-const queryResult = document.querySelector("#query-result");
 const scheduleFullscreenButton = document.querySelector("#schedule-fullscreen");
 const summaryTitle = document.querySelector("#summary-title");
 const monthlySummary = document.querySelector("#monthly-summary");
-const queryDayNavigation = document.querySelector("#query-day-navigation");
-const queryPreviousDayButton = document.querySelector("#query-previous-day");
-const queryNextDayButton = document.querySelector("#query-next-day");
+const todayTitle = document.querySelector("#today-title");
+const todaySchedule = document.querySelector("#today-schedule");
 const shiftOverrides = {};
 const GOLD_FLOW_DURATION_MS = 1800;
 
@@ -102,6 +98,7 @@ let dragSourcePartElement = null;
 let headerRangeStartDay = null;
 let suppressNextRangeClear = false;
 let scheduleFullscreenScrollTop = 0;
+let mobileSwipeStart = null;
 
 function getInitialDate() {
   const today = new Date();
@@ -314,6 +311,7 @@ function renderMonth(year, monthIndex) {
 
   renderMobileSchedule(dates);
   renderMonthlySummary(dates);
+  renderTodaySchedule();
 }
 
 function updateLegalHolidayLegend(dates) {
@@ -393,24 +391,23 @@ function isWeekend(date) {
   return date.getDay() === 0 || date.getDay() === 6;
 }
 
-function showQueryResult(name, date) {
-  const shift = getShift(name, date);
-  const rest = shift === "休";
-  const resultText = rest ? "休息" : displayShift(shift);
-  queryResult.className = `query-result is-${cellClass(shift)}`;
-  queryResult.innerHTML = `<strong>${name}</strong> · ${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日（${WEEKDAYS[date.getDay()]}）：<strong>${resultText}</strong>`;
-  queryDayNavigation.hidden = false;
-  queryPreviousDayButton.disabled = date.getTime() <= SCHEDULE_START_DATE.getTime();
-  queryNextDayButton.disabled = date.getTime() >= new Date(2100, 11, 31).getTime();
+function todayScheduleDate() {
+  const today = new Date();
+  const lastAvailableDay = new Date(2100, 11, 31);
+  if (today < SCHEDULE_START_DATE) return new Date(SCHEDULE_START_DATE);
+  if (today > lastAvailableDay) return lastAvailableDay;
+  return today;
 }
 
-function changeQueryDate(offset) {
-  const currentDate = dateFromIso(dateInput.value);
-  if (Number.isNaN(currentDate.getTime())) return;
-  currentDate.setDate(currentDate.getDate() + offset);
-  if (currentDate < SCHEDULE_START_DATE || currentDate > new Date(2100, 11, 31)) return;
-  dateInput.value = toIso(currentDate);
-  showQueryResult(staffSelect.value, currentDate);
+function renderTodaySchedule() {
+  const date = todayScheduleDate();
+  const weekendClass = isWeekend(date) ? " weekend" : "";
+  todayTitle.textContent = `今日排班：${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日（${WEEKDAYS[date.getDay()]}）`;
+  const shifts = staff.map((person) => {
+    const shift = getShift(person.name, date);
+    return `<div class="mobile-shift"><span class="mobile-shift-name">${person.name}</span><span class="mobile-shift-badge ${cellClass(shift)}">${displayShift(shift)}</span></div>`;
+  }).join("");
+  todaySchedule.innerHTML = `<article class="mobile-day-card today-day-card"><header class="mobile-day-heading${weekendClass}"><span class="mobile-day-number">今日 · ${date.getMonth() + 1} 月 ${date.getDate()} 日</span><span class="mobile-day-weekday">${WEEKDAYS[date.getDay()]}</span></header><div class="mobile-shifts">${shifts}</div></article>`;
 }
 
 function changeMonth(offset) {
@@ -464,10 +461,6 @@ function toggleScheduleFullscreen() {
   requestLandscapeOrientation();
 }
 
-function populateStaffOptions() {
-  staffSelect.innerHTML = staff.map((person) => `<option value="${person.name}">${person.name}</option>`).join("");
-}
-
 document.querySelector("#go-month").addEventListener("click", () => {
   const year = Number(yearInput.value);
   const month = Number(monthInput.value);
@@ -504,6 +497,33 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
   changeMonth(event.key === "ArrowLeft" ? -1 : 1);
 });
+
+mobileSchedule.addEventListener("touchstart", (event) => {
+  if (event.touches.length !== 1) {
+    mobileSwipeStart = null;
+    return;
+  }
+  const touch = event.touches[0];
+  mobileSwipeStart = { x: touch.clientX, y: touch.clientY };
+}, { passive: true });
+
+mobileSchedule.addEventListener("touchend", (event) => {
+  if (!mobileSwipeStart || event.changedTouches.length !== 1) {
+    mobileSwipeStart = null;
+    return;
+  }
+  const touch = event.changedTouches[0];
+  const horizontalDistance = touch.clientX - mobileSwipeStart.x;
+  const verticalDistance = touch.clientY - mobileSwipeStart.y;
+  mobileSwipeStart = null;
+
+  // 仅识别明显的横向滑动，不影响上下滚动查看每日卡片。
+  if (Math.abs(horizontalDistance) < 60 || Math.abs(horizontalDistance) <= Math.abs(verticalDistance) * 1.35) return;
+  changeMonth(horizontalDistance < 0 ? 1 : -1);
+}, { passive: true });
+mobileSchedule.addEventListener("touchcancel", () => {
+  mobileSwipeStart = null;
+}, { passive: true });
 
 table.addEventListener("click", (event) => {
   if (didDrag) {
@@ -912,21 +932,6 @@ function scrollToPage(position) {
   window.scrollTo({ top, behavior: "smooth" });
 }
 
-function scrollToTodaySchedule() {
-  const today = new Date();
-  const firstAvailableDay = new Date(2026, 6, 1);
-  const lastAvailableDay = new Date(2100, 11, 31);
-  const targetDate = today < firstAvailableDay ? firstAvailableDay : today > lastAvailableDay ? lastAvailableDay : today;
-
-  renderMonth(targetDate.getFullYear(), targetDate.getMonth());
-  window.requestAnimationFrame(() => {
-    mobileSchedule.querySelector(`[data-schedule-date="${toIso(targetDate)}"]`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
-    });
-  });
-}
-
 function showDoubleTapTip(button, tip) {
   button.dataset.doubleTapTip = tip;
   button.classList.add("show-double-tap-tip");
@@ -956,22 +961,10 @@ function requireDoubleTap(selector, action, tip) {
 
 requireDoubleTap("#go-page-top", () => scrollToPage("top"), "再点一次：回到顶部");
 requireDoubleTap("#go-page-middle", () => scrollToPage("middle"), "再点一次：前往中间");
-requireDoubleTap("#go-today-schedule", scrollToTodaySchedule, "再点一次：定位今天排班");
 requireDoubleTap("#go-page-bottom", () => scrollToPage("bottom"), "再点一次：前往底部");
 scheduleFullscreenButton.addEventListener("click", toggleScheduleFullscreen);
 window.addEventListener("resize", () => window.requestAnimationFrame(positionLegalOvertimeOverlays));
 
-document.querySelector("#query-form").addEventListener("submit", (event) => {
-  event.preventDefault();
-  const date = dateFromIso(dateInput.value);
-  if (Number.isNaN(date.getTime())) return;
-  showQueryResult(staffSelect.value, date);
-});
-queryPreviousDayButton.addEventListener("click", () => changeQueryDate(-1));
-queryNextDayButton.addEventListener("click", () => changeQueryDate(1));
-
-populateStaffOptions();
-dateInput.value = toIso(new Date());
 renderMonth(displayedDate.getFullYear(), displayedDate.getMonth());
 
 // 供浏览器控制台核对，月表和查询功能均通过同一方法计算班次。
